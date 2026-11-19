@@ -76,6 +76,9 @@ const [{ far }] = await val(`select ((now() at time zone $1)::date + 20)::text a
 ok((await slots(far)).length === 0, "beyond 14 days → no slots");
 const [{ past }] = await val(`select ((now() at time zone $1)::date - 1)::text as past`, [tz]);
 ok((await slots(past)).length === 0, "past date → no slots");
+const range = await val("select slot_start from get_available_slots_range($1)", [CORTE]);
+const [{ n: perMonday }] = await val("select count(*)::int as n from get_available_slots_range($1) where (slot_start at time zone $2)::date = $3::date", [CORTE, tz, mon]);
+ok(range.length > 15 && perMonday === 15, `range returns the whole window (${range.length} slots, 15 on Monday)`);
 
 // --- Booking ------------------------------------------------------------------
 const book = (t, phone = "+56 9 1111 1111", name = "Juan Pérez", hp = null) =>

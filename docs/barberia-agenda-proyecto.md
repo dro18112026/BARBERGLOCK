@@ -119,7 +119,7 @@ Tablas en Supabase (PostgreSQL). Nombres en inglés.
 
 | Regla | Valor |
 |-------|-------|
-| Servicios | **Corte** 60 min · $10.000 — **Corte + barba** 60 min · $15.000 (provisional) — **Barba** 60 min · $7.000 (provisional) |
+| Servicios | **Corte** 60 min · $10.000 — **Corte + barba** 60 min · $15.000 — **Barba** 60 min · $7.000 |
 | Días de atención | **Lunes a sábado** |
 | Horario | **10:00–19:00** |
 | Colación | **14:00–14:30** |
@@ -160,8 +160,8 @@ Tablas en Supabase (PostgreSQL). Nombres en inglés.
 ## 8. Plan por fases
 
 **Fase 1 — Setup** ✅ Next.js + TS + Tailwind v4, paleta y tipografías, clientes Supabase, `netlify.toml`, config por barbería.
-**Fase 2 — Base de datos** Migraciones SQL (tablas, constraint de exclusión, RLS, RPCs), seed (1 barbero, 3 servicios, horario L–S 10:00–19:00 con colación 14:00–14:30).
-**Fase 3 — Flujo de reserva** servicios → fecha → hora → datos → confirmación, + cancelación por token.
+**Fase 2 — Base de datos** ✅ Migraciones SQL (tablas, constraint de exclusión, RLS, RPCs), seed (1 barbero, 3 servicios, horario L–S 10:00–19:00 con colación 14:00–14:30).
+**Fase 3 — Flujo de reserva** ✅ servicios → fecha → hora → datos → confirmación, + cancelación por token.
 **Fase 4 — Panel admin** Auth + rutas protegidas, agenda, CRUDs.
 **Fase 5 — PWA + branding** manifest, íconos 192/512 + maskable, service worker, prueba Android/iOS.
 **Fase 6 — Deploy** Netlify + Supabase producción + cron anti-pausa + prueba en móvil real.
@@ -192,4 +192,4 @@ RESEND_API_KEY=                 # opcional
 ---
 
 ## Pendientes por confirmar
-- Precios de "Corte + barba" y "Barba" (provisionales: $15.000 y $7.000).
+- Precios confirmados ($10.000 / $15.000 / $7.000); se editan desde el panel admin (Fase 4).
