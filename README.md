@@ -3,6 +3,8 @@
 Online booking app + admin panel for a single-barber shop in Chile Chico, Aysén.
 Customers book from a link (no account); the barber manages the schedule from an installable PWA.
 
+**Live:** https://barberglock.netlify.app
+
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres + Auth) · Netlify
 
 Full product brief (in Spanish): [`docs/barberia-agenda-proyecto.md`](docs/barberia-agenda-proyecto.md)
