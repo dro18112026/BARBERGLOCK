@@ -9,8 +9,10 @@ import type { Database } from "./database.types";
  * Uses the anon key + the user's session cookie, so RLS applies.
  */
 export async function createClient() {
-  const { url, anonKey } = getSupabasePublicEnv();
+  // cookies() first: it marks the route as dynamic, so the build never tries to
+  // prerender pages that need the database (and doesn't need the env vars).
   const cookieStore = await cookies();
+  const { url, anonKey } = getSupabasePublicEnv();
 
   return createServerClient<Database>(url, anonKey, {
     cookies: {
