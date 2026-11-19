@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:db": "node supabase/tests/booking.test.mjs",
-    "db:push": "supabase db push",
+    "db:push": "supabase db push --remote",
     "db:link": "supabase link"
   },
   "dependencies": {

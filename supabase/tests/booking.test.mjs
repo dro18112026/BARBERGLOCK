@@ -34,8 +34,7 @@ await db.exec(`
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth, public, extensions to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
+  -- No default privileges: migrations must grant everything explicitly.
 `);
 
 // --- Migrations + seed --------------------------------------------------------
@@ -131,14 +130,14 @@ ok(!s.includes("14:30") && !s.includes("15:00") && !s.includes("15:30") && s.inc
 
 // --- RLS as anon --------------------------------------------------------------
 await db.exec("set role anon");
-ok((await val("select count(*)::int as n from appointments"))[0].n === 0, "anon sees no appointments");
-ok((await val("select count(*)::int as n from time_off"))[0].n === 0, "anon sees no time off");
+await expectErr("select count(*) from appointments", [], "permission denied", "anon cannot read appointments");
+await expectErr("select count(*) from time_off", [], "permission denied", "anon cannot read time off");
 ok((await val("select count(*)::int as n from services"))[0].n === 3, "anon reads services");
 await expectErr(
   `insert into appointments (barber_id, service_id, customer_name, customer_phone, starts_at, ends_at)
    values ('00000000-0000-4000-8000-000000000001', $1, 'Hacker', '+56933333333', $2::timestamptz, $2::timestamptz + interval '1 hour')`,
-  [CORTE, at("17:00")], "row-level security", "anon cannot insert directly");
-await db.query("update services set price_clp = 1"); // RLS: silently matches 0 rows
+  [CORTE, at("17:00")], "permission denied", "anon cannot insert directly");
+await expectErr("update services set price_clp = 1", [], "permission denied", "anon cannot update services");
 ok((await val("select price_clp from services where id = $1", [CORTE]))[0].price_clp === 10000, "anon cannot change prices");
 await expectErr("select default_barber_id()", [], "permission denied", "anon cannot call internal function");
 const [{ r: b3 }] = await val("select book_appointment($1, $2::timestamptz, 'María', '+56 9 4444 4444') as r", [CORTE, at("17:00")]);
