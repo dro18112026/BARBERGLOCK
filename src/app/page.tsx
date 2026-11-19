@@ -28,7 +28,7 @@ export default async function Home() {
         height={siteConfig.logo.height}
         alt={siteConfig.logo.alt}
         priority
-        className="w-64 rounded-sm mix-blend-multiply sm:w-80"
+        className="w-64 sm:w-80"
       />
 
       <div className="text-center">

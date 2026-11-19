@@ -10,7 +10,8 @@
     "test:db": "node supabase/tests/booking.test.mjs",
     "db:push": "supabase db push --remote",
     "db:link": "supabase link",
-    "db:types": "supabase gen types --lang typescript --remote > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types --lang typescript --remote > src/lib/supabase/database.types.ts",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

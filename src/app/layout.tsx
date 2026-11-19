@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, Bebas_Neue } from "next/font/google";
+import { ServiceWorkerRegistration } from "@/components/service-worker";
 import { SiteHeader } from "@/components/site-header";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
   },
   description: `${siteConfig.tagline}. Reserva tu hora online en simples pasos.`,
   applicationName: siteConfig.name,
+  appleWebApp: { title: siteConfig.shortName, capable: true, statusBarStyle: "black" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -38,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <SiteHeader />
         {children}
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

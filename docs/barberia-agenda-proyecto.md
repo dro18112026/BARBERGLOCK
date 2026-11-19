@@ -163,7 +163,7 @@ Tablas en Supabase (PostgreSQL). Nombres en inglés.
 **Fase 2 — Base de datos** ✅ Migraciones SQL (tablas, constraint de exclusión, RLS, RPCs), seed (1 barbero, 3 servicios, horario L–S 10:00–19:00 con colación 14:00–14:30).
 **Fase 3 — Flujo de reserva** ✅ servicios → fecha → hora → datos → confirmación, + cancelación por token.
 **Fase 4 — Panel admin** ✅ Auth + rutas protegidas, agenda, CRUDs.
-**Fase 5 — PWA + branding** manifest, íconos 192/512 + maskable, service worker, prueba Android/iOS.
+**Fase 5 — PWA + branding** ✅ manifest, íconos 192/512 + maskable, service worker, prueba Android/iOS.
 **Fase 6 — Deploy** Netlify + Supabase producción + cron anti-pausa + prueba en móvil real.
 **Fase 7 — Opcional** Email (Resend), recordatorios WhatsApp, reportes.
 

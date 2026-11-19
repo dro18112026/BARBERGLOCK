@@ -6,6 +6,9 @@ import { AdminNav } from "./admin-nav";
 export const metadata: Metadata = {
   title: { default: "Panel", template: "%s · Panel" },
   robots: { index: false, follow: false },
+  // Installing from here gives the barber a separate "Panel" app that opens on the agenda.
+  manifest: "/panel.webmanifest",
+  appleWebApp: { title: "Panel", capable: true, statusBarStyle: "black" },
 };
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {

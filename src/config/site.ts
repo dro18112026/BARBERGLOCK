@@ -16,9 +16,10 @@ export const siteConfig = {
   /** IANA zone. Aysén uses its own zone (UTC-3 all year) since 2025. */
   timeZone: "America/Coyhaique",
   logo: {
-    src: "/brand/logo.jpg",
-    width: 960,
-    height: 954,
+    /** Generated from logo.jpg by `npm run icons` (cleaned background). */
+    src: "/brand/logo-web.png",
+    width: 640,
+    height: 640,
     alt: "Logo de BARBERGLOCK: barbero con barba entre dos postes de barbería",
   },
   /** Phone in international format without "+", e.g. 56912345678. */

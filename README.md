@@ -84,3 +84,5 @@ The app is plain Next.js with no host-specific APIs. `netlify.toml` is the only 
 In every case, copy the env vars from `.env.example`.
 
 **Replicar para otra barbería:** new Supabase project → apply `supabase/migrations` → edit `src/config/site.ts` and `public/brand/logo.*` → new env vars → deploy.
+
+**Icons:** replace `public/brand/logo.jpg` and run `npm run icons` to regenerate the PWA icons, favicon and web logo.
