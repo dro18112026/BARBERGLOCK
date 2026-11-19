@@ -61,6 +61,42 @@ export function addDays(key: DayKey, days: number): DayKey {
   return dayKey(d);
 }
 
+/** 0 = Sunday … 6 = Saturday (same convention as working_hours.weekday). */
+export function weekdayOf(key: DayKey): number {
+  return noonOf(key).getUTCDay();
+}
+
+/** Monday of the week containing `key`. */
+export function startOfWeek(key: DayKey): DayKey {
+  return addDays(key, -((weekdayOf(key) + 6) % 7));
+}
+
+/** UTC offset (ms) of the barbershop's zone at a given instant. */
+function zoneOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    timeZoneName: "longOffset",
+  }).formatToParts(instant);
+  const name = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
+  if (!m) return 0;
+  const sign = m[1] === "-" ? -1 : 1;
+  return sign * (Number(m[2]) * 60 + Number(m[3] ?? 0)) * 60_000;
+}
+
+/** Local day + "HH:MM" in the barbershop's zone → Date (UTC instant). */
+export function zonedToDate(key: DayKey, hhmm: string): Date {
+  const [y, mo, d] = key.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  return new Date(guess - zoneOffsetMs(new Date(guess)));
+}
+
+/** "HH:MM" of an instant in the barbershop's zone (for <input type="time">). */
+export function timeInputValue(date: Date | string): string {
+  return formatTime(date);
+}
+
 /** "10:00" */
 export function formatTime(date: Date | string): string {
   return timeFmt.format(new Date(date));
