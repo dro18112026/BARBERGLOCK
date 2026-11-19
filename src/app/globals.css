@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/*
+ * "Vintage Barber" palette — see docs/barberia-agenda-proyecto.md §2.
+ * Use: bg-bone, text-ink, bg-barber, text-steel, border-smoke, etc.
+ */
+@theme {
+  --color-ink: #141414;
+  --color-bone: #f4f0e6;
+  --color-paper: #ffffff;
+  --color-barber: #b4232a;
+  --color-barber-dark: #8f1b21;
+  --color-steel: #1e3a52;
+  --color-smoke: #6e6e6e;
+
+  --font-display: var(--font-bebas), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
+}
+
+/* The brand is ink-on-paper, like the logo: always light. */
+:root {
+  color-scheme: light;
+}
+
+html {
+  /* Slightly larger base size for older, less technical users. */
+  font-size: 106.25%;
+}
+
+body {
+  background: var(--color-bone);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-steel);
+  outline-offset: 2px;
+}
