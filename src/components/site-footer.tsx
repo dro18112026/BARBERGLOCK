@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstagramIcon, PhoneIcon, WhatsAppIcon } from "@/components/brand-icons";
 import { maps, siteConfig } from "@/config/site";
 import { formatPhone } from "@/lib/format";
 
@@ -17,23 +18,39 @@ export function SiteFooter() {
           </a>
         </address>
 
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+        {phone && (
+          <a href={`tel:+${phone}`} className={`${link} inline-flex items-center gap-2`}>
+            <PhoneIcon className="h-4 w-4" />
+            {formatPhone(phone)}
+          </a>
+        )}
+
+        {/* Social buttons: brand colours on round badges so they're recognised at a glance. */}
+        <div className="flex justify-center gap-4">
           {phone && (
-            <a href={`tel:+${phone}`} className={link}>
-              📞 {formatPhone(phone)}
-            </a>
-          )}
-          {phone && (
-            <a href={`https://wa.me/${phone}`} target="_blank" rel="noopener noreferrer" className={link}>
-              💬 WhatsApp
+            <a
+              href={`https://wa.me/${phone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Escríbenos por WhatsApp"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-105"
+            >
+              <WhatsAppIcon className="h-7 w-7" />
             </a>
           )}
           {social.instagram && (
-            <a href={social.instagram} target="_blank" rel="noopener noreferrer" className={link}>
-              📷 Instagram {social.instagramHandle}
+            <a
+              href={social.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Instagram ${social.instagramHandle}`}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_107%,#fdf497_0%,#fdf497_5%,#fd5949_45%,#d6249f_60%,#285AEB_90%)] text-white transition-transform hover:scale-105"
+            >
+              <InstagramIcon className="h-6 w-6" />
             </a>
           )}
         </div>
+        {social.instagram && <p className="text-sm text-bone/60">{social.instagramHandle}</p>}
 
         <nav className="mt-2 flex gap-4 text-sm text-bone/60">
           <Link href="/privacidad" className="hover:text-bone">

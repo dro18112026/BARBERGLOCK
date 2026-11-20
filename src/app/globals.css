@@ -33,6 +33,33 @@ body {
   font-family: var(--font-sans);
 }
 
+/*
+ * iOS Safari gives date/time inputs an intrinsic min-width and its own
+ * appearance, so with padding they overflow their card. Reset both.
+ */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  min-height: 3.25rem; /* empty iOS date fields otherwise collapse */
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Any input/select inside a grid or flex row may shrink instead of overflowing. */
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
 :focus-visible {
   outline: 3px solid var(--color-steel);
   outline-offset: 2px;

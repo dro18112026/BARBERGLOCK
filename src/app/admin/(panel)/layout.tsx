@@ -19,6 +19,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <AdminNav />
           <div className="flex w-full items-center justify-end gap-4 text-sm text-smoke sm:w-auto">
             <span className="mr-auto hidden md:inline">{email}</span>
+            <Link href="/admin/reportes" className={link}>
+              Reportes
+            </Link>
             {role === "superadmin" && (
               <Link href="/admin/sistema" className={`${link} text-barber`}>
                 Sistema

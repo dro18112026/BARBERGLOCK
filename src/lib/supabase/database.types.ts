@@ -50,7 +50,9 @@ export type Database = {
           ends_at: string
           id: string
           notes: string | null
+          price_clp: number | null
           service_id: string
+          source: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
         }
@@ -64,7 +66,9 @@ export type Database = {
           ends_at: string
           id?: string
           notes?: string | null
+          price_clp?: number | null
           service_id: string
+          source?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
         }
@@ -78,7 +82,9 @@ export type Database = {
           ends_at?: string
           id?: string
           notes?: string | null
+          price_clp?: number | null
           service_id?: string
+          source?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
         }

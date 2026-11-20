@@ -231,6 +231,30 @@ ok(audit.some((a) => a.table_name === "staff" && a.action === "DELETE"), "staff 
 ok(audit.some((a) => a.table_name === "appointments" && a.action === "INSERT"), "bookings logged");
 ok(audit.some((a) => a.table_name === "appointments" && a.action === "INSERT" && a.actor_role === "web"), "website bookings logged as 'web'");
 
+// --- Price snapshot + source ----------------------------------------------------
+{
+  await db.exec("reset role");
+  const rows = await val("select customer_name, price_clp, source from appointments where customer_name in ('María', 'Juan Pérez') order by created_at");
+  ok(rows.every((r) => r.price_clp > 0), `bookings store the price: ${rows.map((r) => r.price_clp).join(", ")}`);
+  ok(rows.find((r) => r.customer_name === "María")?.source === "web", "website booking marked source = web");
+  await as(BARBER);
+  await db.query(
+    `insert into appointments (barber_id, service_id, customer_name, customer_phone, starts_at, ends_at)
+     values ('00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000103', 'Panel Cliente', '+56988888888',
+             now() + interval '20 days', now() + interval '20 days 1 hour')`,
+  );
+  await db.exec("reset role");
+  const p = (await val("select price_clp, source from appointments where customer_name = 'Panel Cliente'"))[0];
+  ok(p.source === "panel" && p.price_clp === 7000, `panel booking: source=${p.source}, price=${p.price_clp}`);
+  await db.exec("update services set price_clp = 9999 where name = 'Barba'");
+  ok((await n("select price_clp as n from appointments where customer_name = 'Panel Cliente'")) === 7000,
+    "later price change does not rewrite booked price");
+  await db.exec("update appointments set service_id = '00000000-0000-4000-8000-000000000102' where customer_name = 'Panel Cliente'");
+  ok((await n("select price_clp as n from appointments where customer_name = 'Panel Cliente'")) === 15000,
+    "changing the service takes the new service price");
+  await db.exec("update services set price_clp = 7000 where name = 'Barba'");
+}
+
 // --- Data retention -------------------------------------------------------------
 await db.exec("reset role");
 await db.query(

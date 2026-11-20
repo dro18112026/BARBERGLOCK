@@ -15,7 +15,7 @@ export type AppointmentDefaults = {
   status?: string;
 };
 
-const label = "flex flex-col gap-1";
+const label = "flex min-w-0 flex-col gap-1";
 const labelText = "font-bold";
 
 export function AppointmentForm({

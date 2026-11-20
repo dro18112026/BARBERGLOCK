@@ -55,13 +55,14 @@ export default async function BloqueosPage() {
           action={addTimeOff}
           successText="Bloqueo guardado"
           resetOnSuccess
-          className={`${card} grid gap-3 sm:grid-cols-2`}
+          // Time fields only matter for partial days: hidden while "Día(s) completo(s)" is checked (pure CSS).
+          className={`${card} grid min-w-0 gap-3 sm:grid-cols-2 [&:has(input[name=allDay]:checked)_.only-partial]:hidden`}
         >
-          <label className="flex flex-col gap-1">
+          <label className="flex min-w-0 flex-col gap-1">
             <span className="font-bold">Desde el día</span>
             <input type="date" name="from" required min={today} defaultValue={today} className={input} />
           </label>
-          <label className="flex flex-col gap-1">
+          <label className="flex min-w-0 flex-col gap-1">
             <span className="font-bold">Hasta el día (opcional)</span>
             <input type="date" name="to" min={today} className={input} />
           </label>
@@ -69,14 +70,16 @@ export default async function BloqueosPage() {
             <input type="checkbox" name="allDay" defaultChecked className="h-6 w-6 accent-steel" />
             <span className="font-bold">Día(s) completo(s)</span>
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-bold">Hora inicio (si no es día completo)</span>
-            <input type="time" name="start" step={900} className={input} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-bold">Hora término</span>
-            <input type="time" name="end" step={900} className={input} />
-          </label>
+          <div className="only-partial grid min-w-0 gap-3 sm:col-span-2 sm:grid-cols-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="font-bold">Hora inicio</span>
+              <input type="time" name="start" step={900} className={input} />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="font-bold">Hora término</span>
+              <input type="time" name="end" step={900} className={input} />
+            </label>
+          </div>
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="font-bold">Motivo (opcional, solo lo ves tú)</span>
             <input name="reason" maxLength={200} placeholder="Ej: Vacaciones, feriado, trámite" className={input} />
