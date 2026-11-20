@@ -165,6 +165,21 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          hit_at: string
+          key: string
+        }
+        Insert: {
+          hit_at?: string
+          key: string
+        }
+        Update: {
+          hit_at?: string
+          key?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           active: boolean
