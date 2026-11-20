@@ -28,11 +28,12 @@ await db.exec(`
   create schema extensions;
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin bypassrls;
   create schema auth;
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth, public, extensions to anon, authenticated;
+  grant usage on schema auth, public, extensions to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated;
   -- No default privileges: migrations must grant everything explicitly.
 `);
@@ -143,8 +144,22 @@ await expectErr(
 await expectErr("update services set price_clp = 1", [], "permission denied", "anon cannot update services");
 ok((await val("select price_clp from services where id = $1", [CORTE]))[0].price_clp === 10000, "anon cannot change prices");
 await expectErr("select default_barber_id()", [], "permission denied", "anon cannot call internal function");
+await expectErr(
+  "select book_appointment($1, $2::timestamptz, 'María', '+56 9 4444 4444')",
+  [CORTE, at("17:00")], "permission denied", "anon cannot book directly (server-only)");
+await expectErr("select hit_rate_limit('x', 1, 60)", [], "permission denied", "anon cannot touch the rate limiter");
+await expectErr("select count(*) from rate_limits", [], "permission denied", "anon cannot read rate limits");
+await db.exec("reset role");
+
+// --- Server (service_role): booking + rate limit --------------------------------
+await db.exec("set role service_role");
 const [{ r: b3 }] = await val("select book_appointment($1, $2::timestamptz, 'María', '+56 9 4444 4444') as r", [CORTE, at("17:00")]);
-ok(b3.status === "confirmed", "anon books via RPC");
+ok(b3.status === "confirmed", "service_role books via RPC");
+const hits = [];
+for (let i = 0; i < 4; i++) hits.push((await val("select hit_rate_limit('ip-a', 3, 3600) as ok"))[0].ok);
+ok(hits.join() === "true,true,true,false", `rate limit allows 3 then blocks: ${hits.join()}`);
+ok((await val("select hit_rate_limit('ip-b', 3, 3600) as ok"))[0].ok === true, "rate limit is per key");
+await expectErr("select hit_rate_limit('ip-c', 1, 90000)", [], "window too long", "rate limit window capped at 1 day");
 await db.exec("reset role");
 
 // --- Admin via RLS ------------------------------------------------------------

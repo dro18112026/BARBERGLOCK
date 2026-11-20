@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useMemo, useRef, useState } from "react";
 import { btnPrimary, card, input, stepTitle } from "@/components/ui";
 import type { Service, Slot } from "@/lib/booking/data";
@@ -206,6 +207,12 @@ export function BookingFlow({ service, slots, today }: Props) {
             <button type="submit" disabled={pending} className={btnPrimary}>
               {pending ? "Reservando…" : "Confirmar reserva"}
             </button>
+            <p className="text-center text-sm text-smoke">
+              Usamos tu nombre y teléfono solo para gestionar tu hora.{" "}
+              <Link href="/privacidad" target="_blank" className="font-bold text-steel underline">
+                Más información
+              </Link>
+            </p>
           </form>
         </section>
       )}

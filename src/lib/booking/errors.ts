@@ -9,6 +9,8 @@ const MESSAGES: Record<string, string> = {
   SERVICE_NOT_FOUND: "Ese servicio ya no está disponible. Elige otro.",
   NO_BARBER: "Las reservas en línea no están disponibles por ahora. Llámanos.",
   INVALID_REQUEST: "No pudimos procesar la reserva. Inténtalo de nuevo.",
+  RATE_LIMITED:
+    "Hiciste muchos intentos de reserva seguidos. Espera un rato o llámanos para reservar.",
   NOT_FOUND: "No encontramos esta reserva.",
   NOT_CANCELLABLE: "Esta reserva ya no se puede cancelar.",
   TOO_LATE: "Falta menos de 1 hora para tu cita. Para cancelar, llámanos por teléfono.",

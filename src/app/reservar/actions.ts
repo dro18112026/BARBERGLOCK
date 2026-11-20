@@ -4,11 +4,18 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "@/lib/booking/data";
 import { errorCode, errorMessage } from "@/lib/booking/errors";
-import { createClient } from "@/lib/supabase/server";
+import { allowRequest } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type BookingState = { error: string | null; code: string | null };
 
 const field = (formData: FormData, name: string) => String(formData.get(name) ?? "").trim();
+
+/** Per-IP booking attempts. Generous for a family sharing Wi-Fi, tight for a bot. */
+const BOOKING_LIMITS = [
+  { limit: 6, windowSeconds: 60 * 60 },
+  { limit: 15, windowSeconds: 24 * 60 * 60 },
+];
 
 export async function bookAppointment(
   _prev: BookingState,
@@ -22,7 +29,13 @@ export async function bookAppointment(
     return { error: errorMessage("INVALID_REQUEST"), code: "INVALID_REQUEST" };
   }
 
-  const supabase = await createClient();
+  if (!(await allowRequest("book", BOOKING_LIMITS))) {
+    return { error: errorMessage("RATE_LIMITED"), code: "RATE_LIMITED" };
+  }
+
+  // book_appointment is only executable by the service role (see migration
+  // 20261119000002): the public API can't be used to bypass the limit above.
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("book_appointment", {
     p_service_id: serviceId,
     p_starts_at: startsAt,

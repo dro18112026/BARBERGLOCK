@@ -1,0 +1,52 @@
+import "server-only";
+import { createHmac } from "node:crypto";
+import { headers } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * Client IP as seen by the host. Netlify sets x-nf-client-connection-ip itself
+ * (can't be spoofed by the client); other hosts usually set x-real-ip or the
+ * first x-forwarded-for entry. Review this list when changing hosts.
+ */
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return (
+    h.get("x-nf-client-connection-ip") ??
+    h.get("cf-connecting-ip") ??
+    h.get("x-real-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+/** Opaque per-IP key: an HMAC, so raw IPs are never stored. */
+async function ipKey(scope: string): Promise<string> {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const digest = createHmac("sha256", secret).update(await clientIp()).digest("base64url");
+  return `${scope}:${digest}`;
+}
+
+type Limit = { limit: number; windowSeconds: number };
+
+/**
+ * Counts one hit against every window; returns false if any is exceeded.
+ * Fails open if the limiter itself errors, so a DB hiccup never blocks
+ * legitimate customers (the phone limit and honeypot still apply).
+ */
+export async function allowRequest(scope: string, limits: Limit[]): Promise<boolean> {
+  const supabase = createAdminClient();
+  const key = await ipKey(scope);
+  for (const { limit, windowSeconds } of limits) {
+    const { data, error } = await supabase.rpc("hit_rate_limit", {
+      p_key: `${key}:${windowSeconds}`,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
+    });
+    if (error) {
+      console.error("rate limit check failed:", error);
+      return true;
+    }
+    if (data === false) return false;
+  }
+  return true;
+}
