@@ -59,6 +59,14 @@ export default async function PrivacidadPage() {
           desde la que se reserva (no tu dirección IP). No usamos cookies de seguimiento ni
           publicidad.
         </p>
+        <p className="mt-2">
+          Tu celular recuerda el link de tus reservas para mostrarte &quot;Tu próxima hora&quot; en
+          la portada. Esa información queda solo en tu dispositivo.
+        </p>
+        <p className="mt-2">
+          El mapa de la portada es de Google Maps y solo se carga si tocas &quot;Ver mapa&quot;; desde
+          ese momento aplica la política de privacidad de Google.
+        </p>
       </section>
 
       <CallUs label="Consultas:" />

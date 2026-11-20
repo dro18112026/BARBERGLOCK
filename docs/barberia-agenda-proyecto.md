@@ -165,7 +165,7 @@ Tablas en Supabase (PostgreSQL). Nombres en inglés.
 **Fase 4 — Panel admin** ✅ Auth + rutas protegidas, agenda, CRUDs.
 **Fase 5 — PWA + branding** ✅ manifest, íconos 192/512 + maskable, service worker, prueba Android/iOS.
 **Fase 6 — Deploy** ✅ Netlify + Supabase producción + cron anti-pausa + prueba en móvil real.
-**Fase 7 — Opcional** Email (Resend), recordatorios WhatsApp, reportes.
+**Fase 7 — Opcional** (recordatorio por WhatsApp ✅ manual desde la agenda) Email (Resend), recordatorios WhatsApp, reportes.
 
 ---
 

@@ -27,6 +27,17 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   appleWebApp: { title: siteConfig.shortName, capable: true, statusBarStyle: "black" },
   formatDetection: { telephone: false },
+  // Absolute URLs for the link preview (WhatsApp, Facebook…).
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  openGraph: {
+    type: "website",
+    locale: "es_CL",
+    siteName: siteConfig.name,
+    title: `${siteConfig.name} · Reserva tu hora`,
+    description: `${siteConfig.tagline}. ${siteConfig.address.street}, ${siteConfig.address.city}. Reserva en línea.`,
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: siteConfig.logo.alt }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

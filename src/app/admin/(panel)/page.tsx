@@ -20,6 +20,7 @@ import {
   zonedToDate,
   type DayKey,
 } from "@/lib/datetime";
+import { formatCLP } from "@/lib/format";
 import { AppointmentCard } from "./appointment-card";
 
 export const metadata: Metadata = { title: "Agenda" };
@@ -160,9 +161,28 @@ export default async function AgendaPage({ searchParams }: PageProps<"/admin">) 
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-smoke">
-            Horario: {hoursText(day)} · {bookedLabel(byDay.get(day) ?? [])}
-          </p>
+          {(() => {
+            const booked = (byDay.get(day) ?? []).filter((a) => a.status !== "cancelled" && a.status !== "no_show");
+            const income = booked.reduce((sum, a) => sum + a.service_price, 0);
+            const done = booked.filter((a) => a.status === "completed").length;
+            return (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-paper p-2 shadow-sm">
+                  <p className="font-display text-3xl leading-none">{booked.length}</p>
+                  <p className="text-sm text-smoke">{booked.length === 1 ? "cita" : "citas"}</p>
+                </div>
+                <div className="rounded-lg bg-paper p-2 shadow-sm">
+                  <p className="font-display text-3xl leading-none">{done}</p>
+                  <p className="text-sm text-smoke">atendidas</p>
+                </div>
+                <div className="rounded-lg bg-paper p-2 shadow-sm">
+                  <p className="font-display text-3xl leading-none">{formatCLP(income)}</p>
+                  <p className="text-sm text-smoke">estimado</p>
+                </div>
+              </div>
+            );
+          })()}
+          <p className="text-smoke">Horario: {hoursText(day)}</p>
           {offFor(day).map((t) => (
             <p key={t.id} className="rounded-lg border-2 border-barber bg-barber/10 p-3 font-bold text-barber">
               Bloqueado {t.label}

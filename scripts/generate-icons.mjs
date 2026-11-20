@@ -46,4 +46,20 @@ await (await onBone(64, 64, await face())).toFile(join(root, "src/app/icon.png")
 // Logo for the website itself (same clean-up, on the page background).
 await (await onBone(640, 640)).toFile(join(root, "public/brand/logo-web.png"));
 
-console.log("Icons written to public/icons and src/app/{icon,apple-icon}.png");
+// Link preview for WhatsApp / Facebook / etc. (Open Graph, 1200x630):
+// the logo centred on bone, framed by an ink border like the site header.
+{
+  const logo = await clean().resize(560, 560, { fit: "contain", background: "#ffffff" }).toBuffer();
+  const frame = Buffer.from(
+    `<svg width="1200" height="630"><rect x="12" y="12" width="1176" height="606" fill="none" stroke="#141414" stroke-width="24"/></svg>`,
+  );
+  await sharp({ create: { width: 1200, height: 630, channels: 3, background: BONE } })
+    .composite([
+      { input: logo, blend: "multiply", left: 320, top: 35 },
+      { input: frame, left: 0, top: 0 },
+    ])
+    .png()
+    .toFile(join(root, "public/og.png"));
+}
+
+console.log("Icons written to public/icons, src/app/{icon,apple-icon}.png, public/og.png");

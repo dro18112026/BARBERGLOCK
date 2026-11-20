@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { AdminAppointment, AppointmentStatus } from "@/lib/admin/data";
-import { formatTime } from "@/lib/datetime";
+import { siteConfig } from "@/config/site";
+import { formatLongDay, formatTime } from "@/lib/datetime";
+import { formatPhone } from "@/lib/format";
 import { setAppointmentStatus } from "./agenda-actions";
 
 export const STATUS: Record<AppointmentStatus, { label: string; className: string }> = {
@@ -46,6 +48,12 @@ export function AppointmentCard({ appt }: { appt: AdminAppointment }) {
   const active = appt.status === "confirmed" || appt.status === "pending";
   const phoneDigits = appt.customer_phone.replace(/\D/g, "");
   const status = STATUS[appt.status];
+  const firstName = appt.customer_name.split(" ")[0];
+  // Free reminder: opens WhatsApp with the message ready, the barber just taps send.
+  const reminder =
+    `Hola ${firstName}, te recordamos tu hora en ${siteConfig.name}: ${appt.service_name}, ` +
+    `${formatLongDay(appt.starts_at).toLowerCase()} a las ${formatTime(appt.starts_at)} hrs ` +
+    `(${siteConfig.address.street}). Si no puedes venir, avísanos por aquí. ¡Te esperamos!`;
 
   return (
     <article
@@ -68,7 +76,7 @@ export function AppointmentCard({ appt }: { appt: AdminAppointment }) {
 
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         <a href={`tel:${appt.customer_phone}`} className="font-bold text-steel underline underline-offset-2">
-          {appt.customer_phone}
+          {formatPhone(phoneDigits)}
         </a>
         <a
           href={`https://wa.me/${phoneDigits}`}
@@ -79,6 +87,16 @@ export function AppointmentCard({ appt }: { appt: AdminAppointment }) {
           WhatsApp
         </a>
       </p>
+      {active && (
+        <a
+          href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(reminder)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1 rounded-md bg-[#1f7a4d] px-3 py-1.5 text-sm font-bold text-paper hover:bg-[#186340]"
+        >
+          💬 Recordar por WhatsApp
+        </a>
+      )}
       {appt.notes && <p className="mt-2 rounded bg-bone p-2 text-sm">{appt.notes}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">

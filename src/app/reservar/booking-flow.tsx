@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useActionState, useMemo, useRef, useState } from "react";
 import { btnPrimary, card, input, stepTitle } from "@/components/ui";
 import type { Service, Slot } from "@/lib/booking/data";
-import { addDays, dayKey, dayParts, formatLongDay, formatTime, type DayKey } from "@/lib/datetime";
+import { addDays, dayKey, dayParts, formatLongDay, formatTime, weekdayOf, type DayKey } from "@/lib/datetime";
 import { formatCLP } from "@/lib/format";
 import { bookAppointment, type BookingState } from "./actions";
 
 const initialState: BookingState = { error: null, code: null };
+const WEEKDAY_HEADERS = ["L", "M", "M", "J", "V", "S", "D"];
 
 type Props = {
   service: Service;
@@ -72,11 +73,21 @@ export function BookingFlow({ service, slots, today, daysAhead }: Props) {
         <h2 id="paso-dia" className={stepTitle}>
           2. Elige el día
         </h2>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-          {days.map((d) => {
+        {/* Weekday-aligned like a paper calendar: Monday first. */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-2" role="group" aria-label="Días disponibles">
+          {WEEKDAY_HEADERS.map((w, i) => (
+            <span key={i} aria-hidden="true" className="text-center text-sm font-bold text-smoke">
+              {w}
+            </span>
+          ))}
+          {Array.from({ length: (weekdayOf(today) + 6) % 7 }, (_, i) => (
+            <span key={`pad-${i}`} aria-hidden="true" />
+          ))}
+          {days.map((d, i) => {
             const count = slotsByDay.get(d)?.length ?? 0;
-            const { weekday, day: num, month } = dayParts(d);
+            const { day: num, month } = dayParts(d);
             const selected = d === day;
+            const showMonth = i === 0 || num === "1";
             return (
               <button
                 key={d}
@@ -89,15 +100,14 @@ export function BookingFlow({ service, slots, today, daysAhead }: Props) {
                   setPickedSlot(null);
                   scrollTo(timesRef.current);
                 }}
-                className={`flex flex-col items-center rounded-lg border-2 px-1 py-2 transition-colors disabled:cursor-not-allowed disabled:border-transparent disabled:bg-bone disabled:text-smoke/50 ${
+                className={`flex min-h-14 flex-col items-center justify-center rounded-lg border-2 py-1 transition-colors disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-smoke/40 ${
                   selected
                     ? "border-ink bg-ink text-bone"
                     : "border-smoke/30 bg-paper hover:border-ink"
                 }`}
               >
-                <span className="text-sm capitalize">{weekday}</span>
-                <span className="font-display text-3xl leading-none">{num}</span>
-                <span className="text-sm">{count === 0 ? "—" : month}</span>
+                <span className="font-display text-2xl leading-none sm:text-3xl">{num}</span>
+                <span className="text-xs leading-tight">{showMonth ? month : " "}</span>
               </button>
             );
           })}

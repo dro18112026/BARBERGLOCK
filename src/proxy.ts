@@ -77,6 +77,8 @@ function contentSecurityPolicy(nonce: string, https: boolean): string {
     "font-src 'self'",
     `connect-src 'self'${dev ? " ws:" : ""}`,
     "manifest-src 'self'",
+    // Only the click-to-load Google Maps embed on the home page.
+    "frame-src https://www.google.com https://maps.google.com",
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

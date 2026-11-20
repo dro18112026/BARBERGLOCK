@@ -17,6 +17,8 @@ export type AdminAppointment = {
   notes: string | null;
   service_id: string;
   service_name: string;
+  /** Current price of the service (for the day summary estimate). */
+  service_price: number;
 };
 
 /** Appointments whose start falls in [from, to) local days. Includes cancelled. */
@@ -27,12 +29,16 @@ export async function getAppointmentsForDays(
 ): Promise<AdminAppointment[]> {
   const { data, error } = await supabase
     .from("appointments")
-    .select("id, starts_at, ends_at, status, customer_name, customer_phone, notes, service_id, services(name)")
+    .select("id, starts_at, ends_at, status, customer_name, customer_phone, notes, service_id, services(name, price_clp)")
     .gte("starts_at", zonedToDate(from, "00:00").toISOString())
     .lt("starts_at", zonedToDate(toExclusive, "00:00").toISOString())
     .order("starts_at");
   if (error) throw new Error(`getAppointmentsForDays: ${error.message}`);
-  return data.map(({ services, ...a }) => ({ ...a, service_name: services?.name ?? "—" }));
+  return data.map(({ services, ...a }) => ({
+    ...a,
+    service_name: services?.name ?? "—",
+    service_price: services?.price_clp ?? 0,
+  }));
 }
 
 export async function getAppointmentById(supabase: Db, id: string) {

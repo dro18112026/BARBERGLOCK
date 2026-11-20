@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CallUs } from "@/components/call-us";
+import { ForgetBooking, RememberBooking } from "@/components/next-appointment";
 import { btnPrimary, btnSecondary, card } from "@/components/ui";
 import { siteConfig } from "@/config/site";
 import { getAppointment } from "@/lib/booking/data";
@@ -48,6 +49,12 @@ export default async function CitaPage({ params, searchParams }: PageProps<"/cit
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-6">
+      {/* Remember on this device for "Tu próxima hora" on the home page. */}
+      {isActive ? (
+        <RememberBooking booking={{ token, startsAt: appt.starts_at, service: appt.service_name }} />
+      ) : (
+        <ForgetBooking token={token} />
+      )}
       {nueva === "1" && isActive ? (
         <div role="status" className="rounded-lg bg-ink p-5 text-center text-bone">
           <p className="font-display text-5xl leading-none tracking-wide">¡Reserva lista!</p>

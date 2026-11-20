@@ -3,8 +3,8 @@
  * file (and the env vars / logo) — nothing else in the code should mention
  * BARBERGLOCK or Chile Chico directly.
  *
- * Booking rules here are the defaults used by the UI; the database functions
- * (Phase 2) enforce the same rules server-side.
+ * Booking rules (lead time, window, limits) live in the database table
+ * booking_settings and are edited in Panel → Sistema → Reglas.
  */
 export const siteConfig = {
   name: "BARBERGLOCK",
@@ -24,19 +24,29 @@ export const siteConfig = {
   },
   /** Phone in international format without "+", e.g. 56912345678. */
   phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE ?? "",
-  booking: {
-    /**
-     * Start times are offered on this grid. 30 min fits 60-min services and the
-     * 30-min lunch break without leaving unusable gaps.
-     */
-    slotStepMin: 30,
-    /** Earliest bookable time, relative to now. */
-    minLeadTimeMin: 60,
-    /** How far ahead customers can book. */
-    maxDaysAhead: 14,
-    /** Max future appointments per phone number (anti-abuse). */
-    maxActivePerPhone: 2,
+  address: {
+    street: "Manuel Rodríguez 253",
+    city: "Chile Chico",
+    region: "Aysén",
+    /** What Google Maps searches for (links and the embedded map). */
+    mapsQuery: "Manuel Rodríguez 253, Chile Chico, Aysén, Chile",
+  },
+  /**
+   * Optional photo of the shop front (your own photo, not a Street View
+   * capture — Google's images can't be reused). Put the file in public/ and
+   * set the path, or leave null to hide it.
+   */
+  storefrontPhoto: null as { src: string; width: number; height: number } | null,
+  social: {
+    instagram: "https://www.instagram.com/barberglo0ck",
+    instagramHandle: "@barberglo0ck",
   },
 } as const;
+
+/** Google Maps links built from the address (no API key needed). */
+export const maps = {
+  directions: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(siteConfig.address.mapsQuery)}`,
+  embed: `https://www.google.com/maps?q=${encodeURIComponent(siteConfig.address.mapsQuery)}&z=16&output=embed`,
+};
 
 export type SiteConfig = typeof siteConfig;
