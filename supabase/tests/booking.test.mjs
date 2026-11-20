@@ -30,11 +30,15 @@ await db.exec(`
   create role authenticated nologin;
   create role service_role nologin bypassrls;
   create schema auth;
-  create table auth.users (id uuid primary key);
+  create table auth.users (id uuid primary key, email text, last_sign_in_at timestamptz);
+  create table auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid, status text);
+  -- Like Supabase: claims come from the request JWT (set per test below).
+  create function auth.jwt() returns jsonb language sql stable as
+    $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
   create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    $$ select nullif(auth.jwt() ->> 'sub', '')::uuid $$;
   grant usage on schema auth, public, extensions to anon, authenticated, service_role;
-  grant execute on function auth.uid() to anon, authenticated;
+  grant execute on function auth.uid(), auth.jwt() to anon, authenticated, service_role;
   -- No default privileges: migrations must grant everything explicitly.
 `);
 
@@ -152,6 +156,7 @@ await expectErr("select count(*) from rate_limits", [], "permission denied", "an
 await db.exec("reset role");
 
 // --- Server (service_role): booking + rate limit --------------------------------
+await db.exec(`select set_config('request.jwt.claims', '{"role":"service_role"}', false)`);
 await db.exec("set role service_role");
 const [{ r: b3 }] = await val("select book_appointment($1, $2::timestamptz, 'María', '+56 9 4444 4444') as r", [CORTE, at("17:00")]);
 ok(b3.status === "confirmed", "service_role books via RPC");
@@ -162,16 +167,105 @@ ok((await val("select hit_rate_limit('ip-b', 3, 3600) as ok"))[0].ok === true, "
 await expectErr("select hit_rate_limit('ip-c', 1, 90000)", [], "window too long", "rate limit window capped at 1 day");
 await db.exec("reset role");
 
-// --- Admin via RLS ------------------------------------------------------------
+// --- Roles: barber / superadmin / plain user ----------------------------------
+const SUPER = "11111111-1111-4111-8111-111111111111";
+const BARBER = "33333333-3333-4333-8333-333333333333";
+const NOBODY = "22222222-2222-4222-8222-222222222222";
 await db.exec(`
-  insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
-  insert into admins values ('11111111-1111-4111-8111-111111111111');
+  insert into auth.users (id, email) values
+    ('${SUPER}', 'yo@prueba.test'), ('${BARBER}', 'barbero@prueba.test'), ('${NOBODY}', 'otro@prueba.test');
+  insert into staff (user_id, role) values ('${SUPER}', 'superadmin'), ('${BARBER}', 'barber');
 `);
-await db.exec("set role authenticated");
-await db.exec("select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', false)");
-ok((await val("select count(*)::int as n from appointments"))[0].n === 0, "non-admin authenticated user sees no appointments");
-await db.exec("select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', false)");
-ok((await val("select count(*)::int as n from appointments"))[0].n > 0, "admin sees appointments");
+/** Act as an authenticated user with the given JWT claims. */
+const as = async (sub, aal = "aal1") => {
+  await db.exec("reset role");
+  await db.query("select set_config('request.jwt.claims', $1, false)", [
+    JSON.stringify({ sub, role: "authenticated", aal }),
+  ]);
+  await db.exec("set role authenticated");
+};
+const n = async (sql, params) => (await val(sql, params))[0].n;
+
+await as(NOBODY);
+ok((await n("select count(*)::int as n from appointments")) === 0, "plain signed-in user sees no appointments");
+ok((await val("select my_role() as r"))[0].r === null, "plain user has no role");
+
+await as(BARBER);
+ok((await val("select my_role() as r"))[0].r === "barber", "barber role");
+ok((await n("select count(*)::int as n from appointments")) > 0, "barber sees appointments");
+await db.exec("update booking_settings set max_days_ahead = 30");
+await db.exec("reset role");
+ok((await n("select max_days_ahead as n from booking_settings")) === 14, "barber cannot change booking rules");
+await as(BARBER);
+ok((await n("select count(*)::int as n from audit_log")) === 0, "barber cannot read audit log");
+await expectErr("select * from staff_list()", [], "FORBIDDEN", "barber cannot list staff");
+await db.exec("update services set price_clp = 11000 where name = 'Corte'");
+await db.exec("reset role");
+ok((await n("select price_clp as n from services where name = 'Corte'")) === 11000, "barber can change prices");
+
+await as(SUPER);
+ok((await val("select is_superadmin() as r"))[0].r === true, "superadmin role");
+await db.exec("update booking_settings set max_days_ahead = 21");
+await db.exec("reset role");
+ok((await n("select max_days_ahead as n from booking_settings")) === 21, "superadmin changes booking rules");
+await as(SUPER);
+const list = await val("select email, role::text from staff_list()");
+ok(list.length === 2, `superadmin lists staff: ${list.map((x) => x.email + "=" + x.role).join(", ")}`);
+await db.exec("select staff_grant('OTRO@prueba.test', 'barber')");
+ok((await n("select count(*)::int as n from staff")) === 3, "superadmin grants access by email (case-insensitive)");
+await expectErr("select staff_grant('noexiste@prueba.test', 'barber')", [], "USER_NOT_FOUND", "grant to unknown email fails");
+await db.query("select staff_revoke($1)", [NOBODY]);
+ok((await n("select count(*)::int as n from staff")) === 2, "superadmin revokes access");
+await expectErr("select staff_revoke($1)", [SUPER], "CANNOT_REVOKE_SELF", "superadmin cannot revoke self");
+await expectErr(`update staff set role = 'barber' where user_id = '${SUPER}'`, [], "LAST_SUPERADMIN", "cannot remove the last superadmin");
+
+// --- Audit log ------------------------------------------------------------------
+const audit = await val(
+  "select actor_role, action, table_name, new_data from audit_log order by id",
+);
+const priceChange = audit.find((a) => a.table_name === "services" && a.action === "UPDATE");
+ok(priceChange?.actor_role === "barber" && Object.keys(priceChange.new_data).join() === "price_clp",
+  `price change logged as barber with only the changed column: ${JSON.stringify(priceChange?.new_data)}`);
+ok(audit.some((a) => a.table_name === "booking_settings" && a.actor_role === "superadmin"), "rule change logged as superadmin");
+ok(audit.some((a) => a.table_name === "staff" && a.action === "DELETE"), "staff changes logged");
+ok(audit.some((a) => a.table_name === "appointments" && a.action === "INSERT"), "bookings logged");
+ok(audit.some((a) => a.table_name === "appointments" && a.action === "INSERT" && a.actor_role === "web"), "website bookings logged as 'web'");
+
+// --- Data retention -------------------------------------------------------------
+await db.exec("reset role");
+await db.query(
+  `insert into appointments (barber_id, service_id, customer_name, customer_phone, starts_at, ends_at, status, notes)
+   values ('00000000-0000-4000-8000-000000000001', $1, 'Cliente Antiguo', '+56977777777',
+           now() - interval '2 years', now() - interval '2 years' + interval '1 hour', 'completed', 'nota')`,
+  [CORTE],
+);
+await as(BARBER);
+await expectErr("select purge_personal_data(12)", [], "FORBIDDEN", "barber cannot purge");
+await as(SUPER);
+const [{ r: purged }] = await val("select purge_personal_data(12) as r");
+await db.exec("reset role");
+const old = (await val("select customer_name, customer_phone, notes from appointments where starts_at < now() - interval '1 year'"))[0];
+ok(purged.appointments === 1 && old.customer_name === "Anónimo" && old.customer_phone === "+56900000000" && old.notes === null,
+  `purge anonymises old appointments: ${JSON.stringify(purged)}`);
+ok((await n("select count(*)::int as n from audit_log where action = 'UPDATE' and old_data::text like '%Cliente Antiguo%'")) === 0,
+  "anonymisation itself is not written to the audit log");
+ok((await n("select count(*)::int as n from audit_log where action = 'PURGE'")) === 1, "purge run is logged");
+ok((await n("select count(*)::int as n from appointments where customer_name <> 'Anónimo'")) > 0, "recent appointments untouched");
+await db.exec("set role anon");
+await expectErr("select purge_personal_data(12)", [], "permission denied", "anon cannot purge");
+await db.exec("reset role");
+
+// --- Two-step verification (TOTP) ------------------------------------------------
+await db.exec(`insert into auth.mfa_factors (user_id, status) values ('${SUPER}', 'verified')`);
+await as(SUPER, "aal1");
+ok((await val("select is_admin() as a, is_superadmin() as s, mfa_pending() as p"))[0].a === false,
+  "with 2FA enrolled, an aal1 session is not staff");
+ok((await val("select mfa_pending() as p"))[0].p === true, "mfa_pending tells the UI to ask for the code");
+ok((await n("select count(*)::int as n from appointments")) === 0, "aal1 session sees no appointments");
+await as(SUPER, "aal2");
+ok((await val("select is_superadmin() as s"))[0].s === true, "after the code (aal2) superadmin works again");
+await as(BARBER, "aal1");
+ok((await val("select is_admin() as a"))[0].a === true, "staff without 2FA unaffected");
 await db.exec("reset role");
 
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");

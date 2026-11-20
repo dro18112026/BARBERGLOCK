@@ -57,3 +57,10 @@ export async function getAppointment(token: string): Promise<AppointmentView | n
   if (error) throw new Error(`getAppointment: ${error.message}`);
   return (data as AppointmentView | null) ?? null;
 }
+
+/** Booking window in days (editable by the superadmin in Sistema → Reglas). */
+export async function getMaxDaysAhead(): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("booking_settings").select("max_days_ahead").eq("id", true).maybeSingle();
+  return data?.max_days_ahead ?? 14;
+}

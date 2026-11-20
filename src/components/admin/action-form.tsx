@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 
-export type ActionResult = { error: string | null; ok: boolean };
+/** `message` (optional) replaces the generic success text. */
+export type ActionResult = { error: string | null; ok: boolean; message?: string };
 export type FormAction = (prev: ActionResult, formData: FormData) => Promise<ActionResult>;
 
 const initial: ActionResult = { error: null, ok: false };
@@ -19,9 +20,12 @@ const PendingContext = createContext(false);
 /**
  * A <form> bound to a Server Action that shows its error / success message.
  *
- * Submits via onSubmit + startTransition instead of the `action` prop on
- * purpose: React resets uncontrolled forms after an `action` completes, which
- * would wipe what the user typed on a validation error.
+ * Once hydrated, it submits via onSubmit + startTransition (preventDefault
+ * stops React's own form action): React resets uncontrolled forms after an
+ * `action` completes, which would wipe what the user typed on a validation
+ * error. The `action` prop is still set so that a submit *before* hydration is
+ * a POST to the Server Action (progressive enhancement) — without it the
+ * browser would do a GET and put the fields (e.g. a customer's phone) in the URL.
  */
 export function ActionForm({
   action,
@@ -50,6 +54,7 @@ export function ActionForm({
   return (
     <form
       ref={formRef}
+      action={dispatch}
       className={className}
       onSubmit={(e) => {
         e.preventDefault();
@@ -64,9 +69,9 @@ export function ActionForm({
           {state.error}
         </p>
       )}
-      {state.ok && successText && (
+      {state.ok && (state.message || successText) && (
         <p role="status" className="w-full basis-full font-bold text-steel">
-          {successText}
+          {state.message || successText}
         </p>
       )}
     </form>

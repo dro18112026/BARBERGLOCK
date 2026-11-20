@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CallUs } from "@/components/call-us";
 import { card, stepTitle } from "@/components/ui";
-import { getServices, getSlots, isUuid } from "@/lib/booking/data";
+import { getMaxDaysAhead, getServices, getSlots, isUuid } from "@/lib/booking/data";
 import { dayKey } from "@/lib/datetime";
 import { formatCLP } from "@/lib/format";
 import { BookingFlow } from "./booking-flow";
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Reservar hora" };
 
 export default async function ReservarPage({ searchParams }: PageProps<"/reservar">) {
   const { servicio } = await searchParams;
-  const services = await getServices();
+  const [services, daysAhead] = await Promise.all([getServices(), getMaxDaysAhead()]);
   const selected =
     isUuid(servicio) ? (services.find((s) => s.id === servicio) ?? null) : null;
   const slots = selected ? await getSlots(selected.id) : [];
@@ -70,7 +70,7 @@ export default async function ReservarPage({ searchParams }: PageProps<"/reserva
 
       {/* Steps 2–4 — day, time, details */}
       {selected && (
-        <BookingFlow key={selected.id} service={selected} slots={slots} today={dayKey(new Date())} />
+        <BookingFlow key={selected.id} service={selected} slots={slots} today={dayKey(new Date())} daysAhead={daysAhead} />
       )}
 
       <CallUs />

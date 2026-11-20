@@ -6,7 +6,6 @@ import { btnPrimary, card, input, stepTitle } from "@/components/ui";
 import type { Service, Slot } from "@/lib/booking/data";
 import { addDays, dayKey, dayParts, formatLongDay, formatTime, type DayKey } from "@/lib/datetime";
 import { formatCLP } from "@/lib/format";
-import { siteConfig } from "@/config/site";
 import { bookAppointment, type BookingState } from "./actions";
 
 const initialState: BookingState = { error: null, code: null };
@@ -16,9 +15,11 @@ type Props = {
   slots: Slot[];
   /** Today in the barbershop's time zone, computed on the server (avoids hydration drift). */
   today: DayKey;
+  /** Booking window from booking_settings. */
+  daysAhead: number;
 };
 
-export function BookingFlow({ service, slots, today }: Props) {
+export function BookingFlow({ service, slots, today, daysAhead }: Props) {
   const [state, formAction, pending] = useActionState(bookAppointment, initialState);
 
   // Group slots by local day.
@@ -33,8 +34,8 @@ export function BookingFlow({ service, slots, today }: Props) {
 
   const days = useMemo(
     () =>
-      Array.from({ length: siteConfig.booking.maxDaysAhead + 1 }, (_, i) => addDays(today, i)),
-    [today],
+      Array.from({ length: daysAhead + 1 }, (_, i) => addDays(today, i)),
+    [today, daysAhead],
   );
 
   const [pickedDay, setPickedDay] = useState<DayKey | null>(null);
@@ -58,7 +59,7 @@ export function BookingFlow({ service, slots, today }: Props) {
       <div className={`${card} text-center`}>
         <p className="text-lg">
           No quedan horas disponibles para {service.name.toLowerCase()} en los próximos{" "}
-          {siteConfig.booking.maxDaysAhead} días.
+          {daysAhead} días.
         </p>
       </div>
     );

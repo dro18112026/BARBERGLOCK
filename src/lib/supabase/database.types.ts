@@ -39,21 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admins: {
-        Row: {
-          created_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       appointments: {
         Row: {
           barber_id: string
@@ -113,6 +98,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string
+          at: string
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          row_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role: string
+          at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          row_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string
+          at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          row_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
       }
       barbers: {
         Row: {
@@ -213,6 +234,24 @@ export type Database = {
         }
         Relationships: []
       }
+      staff: {
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["staff_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["staff_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["staff_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_off: {
         Row: {
           barber_id: string
@@ -296,6 +335,7 @@ export type Database = {
         Returns: Json
       }
       cancel_appointment: { Args: { p_token: string }; Returns: Json }
+      current_actor_role: { Args: never; Returns: string }
       default_barber_id: { Args: never; Returns: string }
       get_appointment: { Args: { p_token: string }; Returns: Json }
       get_available_slots: {
@@ -317,6 +357,32 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_superadmin: { Args: never; Returns: boolean }
+      mfa_ok: { Args: never; Returns: boolean }
+      mfa_pending: { Args: never; Returns: boolean }
+      my_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["staff_role"]
+      }
+      purge_personal_data: { Args: { p_months?: number }; Returns: Json }
+      staff_grant: {
+        Args: {
+          p_email: string
+          p_role: Database["public"]["Enums"]["staff_role"]
+        }
+        Returns: undefined
+      }
+      staff_list: {
+        Args: never
+        Returns: {
+          email: string
+          has_2fa: boolean
+          last_sign_in_at: string
+          role: Database["public"]["Enums"]["staff_role"]
+          user_id: string
+        }[]
+      }
+      staff_revoke: { Args: { p_user_id: string }; Returns: undefined }
     }
     Enums: {
       appointment_status:
@@ -325,6 +391,7 @@ export type Database = {
         | "cancelled"
         | "completed"
         | "no_show"
+      staff_role: "barber" | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -462,6 +529,7 @@ export const Constants = {
         "completed",
         "no_show",
       ],
+      staff_role: ["barber", "superadmin"],
     },
   },
 } as const
