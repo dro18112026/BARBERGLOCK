@@ -8,12 +8,14 @@ import { verifyMfa } from "./actions";
 
 export const metadata: Metadata = { title: "Verificación" };
 
-export default async function MfaPage() {
+export default async function MfaPage({ searchParams }: PageProps<"/admin/mfa">) {
+  const { next } = await searchParams;
+  const toPassword = next === "clave";
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims?.sub) redirect("/admin/login");
   const { data: pending } = await supabase.rpc("mfa_pending");
-  if (!pending) redirect("/admin");
+  if (!pending) redirect(toPassword ? "/admin/nueva-clave" : "/admin");
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
@@ -23,6 +25,7 @@ export default async function MfaPage() {
         escribe el código de 6 números de <strong>BARBERGLOCK</strong>.
       </p>
       <ActionForm action={verifyMfa} successText="" className={`${card} flex flex-col gap-4`}>
+        {toPassword && <input type="hidden" name="next" value="clave" />}
         <label className="flex flex-col gap-1">
           <span className="text-lg font-bold">Código</span>
           <input

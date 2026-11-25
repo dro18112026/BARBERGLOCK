@@ -41,6 +41,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/admin/logi
 
       <div className={card}>
         <LoginForm />
+        <Link
+          href="/admin/recuperar"
+          className="mt-4 block text-center font-bold text-steel underline underline-offset-2"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
       </div>
 
       <InstallGuide appName="Panel" />

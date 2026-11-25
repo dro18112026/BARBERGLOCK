@@ -1,0 +1,59 @@
+CAMBIAR UNA CONTRASEÑA A MANO (Supabase → SQL Editor)
+=====================================================
+
+Úsalo cuando alguien no puede entrar al panel y la recuperación por correo
+no sirve. Se ejecuta en supabase.com → proyecto BARBERGLOCK → SQL Editor.
+
+IMPORTANTE
+- Escribe la contraseña nueva solo en el SQL Editor. No la guardes en este
+  archivo ni la mandes por chat o WhatsApp.
+- Después de usarlo, borra la consulta del SQL Editor (queda en el historial).
+- Mínimo 8 caracteres, igual que en el panel.
+
+
+PASO 1 — Ver los correos de las cuentas del panel
+-------------------------------------------------
+Te muestra el correo y el perfil (superadmin o barber) de cada cuenta.
+
+select u.email, s.role, u.last_sign_in_at
+from public.staff s
+join auth.users u on u.id = s.user_id
+order by s.role desc, u.email;
+
+
+PASO 2 — Cambiar la contraseña
+------------------------------
+Reemplaza CORREO y CONTRASEÑA-NUEVA. Debe decir "1 row affected";
+si dice 0, el correo no coincide (revisa el paso 1).
+
+-- Superadmin (tu cuenta):
+update auth.users
+set encrypted_password = extensions.crypt('CONTRASEÑA-NUEVA', extensions.gen_salt('bf')),
+    updated_at = now()
+where email = 'CORREO-DEL-SUPERADMIN';
+
+-- Barbero (barbero1):
+update auth.users
+set encrypted_password = extensions.crypt('CONTRASEÑA-NUEVA', extensions.gen_salt('bf')),
+    updated_at = now()
+where email = 'CORREO-DEL-BARBERO';
+
+
+PASO 3 (solo si hace falta) — Quitar la verificación en dos pasos (2FA)
+------------------------------------------------------------------------
+Solo si la persona perdió el celular o la app de códigos. Después de entrar,
+puede volver a activarla en Panel → Mi cuenta.
+
+delete from auth.mfa_factors
+where user_id = (select id from auth.users where email = 'CORREO');
+
+
+PASO 4 (opcional) — Cerrar las sesiones abiertas de esa cuenta
+---------------------------------------------------------------
+Útil si se perdió o robaron un celular con el panel abierto.
+
+delete from auth.sessions
+where user_id = (select id from auth.users where email = 'CORREO');
+
+
+Luego se entra en: https://barberglock.netlify.app/admin/login

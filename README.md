@@ -59,6 +59,13 @@ Double booking is prevented by the `appointments_no_overlap` exclusion constrain
 `insert into public.admins (user_id) values ('<user uuid>');` in the SQL editor.
 Turn off public sign-ups (Authentication → Sign In / Providers → "Allow new users to sign up").
 
+**Password recovery** ("¿Olvidaste tu contraseña?" on the login page) needs two settings in the Supabase dashboard:
+
+1. Authentication → URL Configuration: **Site URL** = the live URL (e.g. `https://barberglock.netlify.app`), and add `https://<your-site>/admin/recuperar/link` to **Redirect URLs**.
+2. Authentication → Emails → **Reset Password**: paste the body of [`supabase/templates/recovery.html`](supabase/templates/recovery.html) (subject: "Crea tu contraseña nueva"). Its link carries a token hash, so it works even if the email is opened on another device.
+
+Supabase's built-in email sender only allows a few emails per hour; set up custom SMTP (Authentication → Emails → SMTP) if that's not enough.
+
 ## Design tokens
 
 Tailwind theme in `src/app/globals.css`:

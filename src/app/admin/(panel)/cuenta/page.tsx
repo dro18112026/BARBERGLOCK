@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { TwoFactor } from "./two-factor";
@@ -19,9 +20,12 @@ export default async function CuentaPage() {
       <section className={`${card} flex flex-col gap-1`}>
         <p className="text-lg font-bold">{email}</p>
         <p className="text-smoke">Perfil: {ROLE_LABEL[role]}</p>
-        <p className="text-sm text-smoke">
-          Para cambiar la contraseña, pídesela al administrador del sistema.
-        </p>
+        <Link
+          href="/admin/nueva-clave"
+          className="mt-2 font-bold text-steel underline underline-offset-2"
+        >
+          Cambiar contraseña
+        </Link>
       </section>
 
       <section className={`${card} flex flex-col gap-3`}>

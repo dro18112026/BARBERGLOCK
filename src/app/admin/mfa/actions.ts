@@ -17,5 +17,10 @@ export async function verifyMfa(_prev: ActionResult, formData: FormData): Promis
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (error) return { error: "Código incorrecto o vencido. Prueba con el código nuevo.", ok: false };
 
-  redirect("/admin");
+  redirect(mfaDestination(formData.get("next")));
+}
+
+/** Where to go after the code. Only known values, so it can't be an open redirect. */
+function mfaDestination(next: FormDataEntryValue | null): string {
+  return next === "clave" ? "/admin/nueva-clave" : "/admin";
 }

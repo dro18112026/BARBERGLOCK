@@ -53,7 +53,11 @@ export async function proxy(request: NextRequest) {
     const { data } = await supabase.auth.getClaims();
     const signedIn = Boolean(data?.claims?.sub);
 
-    if (!signedIn && request.nextUrl.pathname !== "/admin/login") {
+    const path = request.nextUrl.pathname;
+    // Pages that must work without a session: login and password recovery.
+    const isPublic = path === "/admin/login" || path.startsWith("/admin/recuperar");
+
+    if (!signedIn && !isPublic) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/login";
       url.search = "";

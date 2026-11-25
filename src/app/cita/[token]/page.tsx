@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CallUs } from "@/components/call-us";
@@ -9,6 +8,7 @@ import { siteConfig } from "@/config/site";
 import { getAppointment } from "@/lib/booking/data";
 import { formatLongDay, formatTime } from "@/lib/datetime";
 import { formatCLP } from "@/lib/format";
+import { absoluteUrl } from "@/lib/site-url";
 import { CancelForm } from "./cancel-form";
 
 export const metadata: Metadata = {
@@ -23,15 +23,6 @@ const STATUS_LABEL = {
   completed: "Atendida",
   no_show: "No asistió",
 } as const;
-
-async function absoluteUrl(path: string): Promise<string> {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
-  if (configured) return new URL(path, configured).toString();
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}${path}`;
-}
 
 export default async function CitaPage({ params, searchParams }: PageProps<"/cita/[token]">) {
   const { token } = await params;
