@@ -355,5 +355,70 @@ await db.exec("reset role");
   await db.exec("reset role");
 }
 
+// --- Per-connection limits + blocked phones --------------------------------------
+{
+  const [{ tue }] = await val("select ($1::date + 1)::text as tue", [mon]);
+  const atTue = (hhmm) => `${tue} ${hhmm}:00-03`;
+  const book = (hhmm, phone, client) =>
+    val("select book_appointment($1, $2::timestamptz, 'Cliente', $3, null, $4) as r", [CORTE, atTue(hhmm), phone, client]);
+  const asServer = async () => {
+    await db.exec("reset role");
+    await db.exec(`select set_config('request.jwt.claims', '{"role":"service_role"}', false)`);
+    await db.exec("set role service_role");
+  };
+
+  ok((await val("select normalize_cl_phone('+56 9 1234 5678') as p"))[0].p === "+56912345678", "phone normaliser (+56 format)");
+  ok((await val("select normalize_cl_phone('9 1234 5678') as p"))[0].p === "+56912345678", "phone normaliser (9 digits)");
+  ok((await val("select normalize_cl_phone('1234') as p"))[0].p === null, "phone normaliser rejects junk");
+
+  // Hourly: 2 bookings per connection, whatever the phone number.
+  await asServer();
+  await book("10:00", "+56 9 1000 0001", "conn-a");
+  await book("11:00", "+56 9 1000 0002", "conn-a");
+  await expectErr("select book_appointment($1, $2::timestamptz, 'Cliente', '+56 9 1000 0003', null, 'conn-a')",
+    [CORTE, atTue("12:00")], "CLIENT_HOURLY_LIMIT", "3rd booking in an hour from one connection is refused (new phone each time)");
+  await book("12:00", "+56 9 1000 0003", "conn-b");
+  ok(true, "another connection can still book");
+  await book("13:00", "+56 9 1000 0004", null);
+  ok(true, "unknown connection (no key) is not limited");
+
+  // Active: 3 future appointments per connection.
+  await db.exec("reset role");
+  await db.exec("update booking_settings set max_bookings_per_client_hour = 10");
+  await asServer();
+  await book("15:00", "+56 9 1000 0005", "conn-a");
+  await expectErr("select book_appointment($1, $2::timestamptz, 'Cliente', '+56 9 1000 0006', null, 'conn-a')",
+    [CORTE, atTue("16:00")], "CLIENT_LIMIT", "4th future appointment from one connection is refused");
+  await db.exec("reset role");
+  await db.query("update appointments set status = 'cancelled' where customer_phone = '+56910000005'");
+  await asServer();
+  await book("16:00", "+56 9 1000 0006", "conn-a");
+  ok(true, "after a cancellation the connection can book again");
+  await db.exec("reset role");
+  await db.exec("update booking_settings set max_bookings_per_client_hour = 2");
+  ok((await n("select count(*)::int as n from booking_clients")) === 5, "website bookings remember their connection");
+
+  // Blocked phones
+  await db.exec("set role anon");
+  await expectErr("select block_phone('9 1000 0006')", [], "permission denied", "anon cannot block phones");
+  await as(NOBODY);
+  await expectErr("select block_phone('9 1000 0006')", [], "FORBIDDEN", "non-staff cannot block phones");
+  await as(BARBER);
+  await expectErr("select block_phone('123')", [], "INVALID_PHONE", "blocking needs a valid phone");
+  const [{ c }] = await val("select block_phone('9 1000 0006', 'Reservas falsas', true) as c");
+  ok(c === 1, `blocking can cancel the number's future appointments: ${c}`);
+  ok((await val("select phone, reason from blocked_phones"))[0]?.phone === "+56910000006", "barber sees the blocked list");
+  await asServer();
+  await expectErr("select book_appointment($1, $2::timestamptz, 'Cliente', '+56 9 1000 0006', null, 'conn-z')",
+    [CORTE, atTue("17:00")], "PHONE_BLOCKED", "blocked phone cannot book online");
+  await as(BARBER);
+  await db.exec("select unblock_phone('+56910000006')");
+  await asServer();
+  await book("17:00", "+56 9 1000 0006", "conn-z");
+  ok(true, "unblocked phone can book again");
+  await db.exec("reset role");
+  ok((await n("select count(*)::int as n from audit_log where table_name = 'blocked_phones'")) === 2, "blocking and unblocking are logged");
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
 process.exit(failures ? 1 : 0);

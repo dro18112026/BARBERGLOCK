@@ -4,7 +4,9 @@ import { card, input } from "@/components/ui";
 import { getAppointmentsForDays, getUpcomingTimeOff } from "@/lib/admin/data";
 import { requireAdmin } from "@/lib/auth";
 import { addDays, dayKey, formatLongDay, formatTime } from "@/lib/datetime";
-import { addTimeOff, deleteTimeOff } from "./actions";
+import { formatPhone } from "@/lib/format";
+import { addTimeOff, deleteTimeOff, unblockPhone } from "./actions";
+import { BlockPhoneForm } from "./block-phone-form";
 
 export const metadata: Metadata = { title: "Bloqueos" };
 
@@ -27,9 +29,10 @@ function describe(startsAt: string, endsAt: string) {
 export default async function BloqueosPage() {
   const { supabase } = await requireAdmin();
   const today = dayKey(new Date());
-  const [blocks, upcoming] = await Promise.all([
+  const [blocks, upcoming, { data: phones }] = await Promise.all([
     getUpcomingTimeOff(supabase, today),
     getAppointmentsForDays(supabase, today, addDays(today, 120)),
+    supabase.from("blocked_phones").select("phone, reason, created_at").order("created_at", { ascending: false }),
   ]);
 
   // Active appointments that fall inside a block — the barber should contact them.
@@ -121,6 +124,34 @@ export default async function BloqueosPage() {
             </ActionForm>
           );
         })}
+      </section>
+
+      <section id="telefonos" className="flex scroll-mt-4 flex-col gap-3">
+        <h2 className="font-display text-3xl tracking-wide">Teléfonos bloqueados</h2>
+        <p className="-mt-1 text-smoke">
+          Para quien hace reservas falsas o nunca llega. Ese número no puede reservar por internet
+          (se le pide que llame). También puedes bloquearlo desde la cita, en la agenda.
+        </p>
+        <BlockPhoneForm />
+        {(phones ?? []).length === 0 && <p className="text-smoke">No hay teléfonos bloqueados.</p>}
+        {(phones ?? []).map((p) => (
+          <ActionForm
+            key={p.phone}
+            action={unblockPhone.bind(null, p.phone)}
+            successText=""
+            confirmText="¿Desbloquear este teléfono? Podrá volver a reservar por internet."
+            className={`${card} flex flex-col gap-1`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-lg font-bold">{formatPhone(p.phone.replace(/^\+/, ""))}</p>
+              <SubmitButton pendingText="…" className="shrink-0 font-bold text-steel underline">
+                Desbloquear
+              </SubmitButton>
+            </div>
+            {p.reason && <p className="text-smoke">{p.reason}</p>}
+            <p className="text-sm text-smoke">Bloqueado el {formatLongDay(p.created_at).toLowerCase()}</p>
+          </ActionForm>
+        ))}
       </section>
     </>
   );

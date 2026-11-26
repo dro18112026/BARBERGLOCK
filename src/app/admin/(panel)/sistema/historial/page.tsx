@@ -12,6 +12,7 @@ const TABLES: Record<string, string> = {
   services: "Servicios",
   working_hours: "Horario",
   time_off: "Bloqueos",
+  blocked_phones: "Teléfonos bloqueados",
   booking_settings: "Reglas",
   staff: "Usuarios",
   barbers: "Barberos",
@@ -39,6 +40,7 @@ const FIELDS: Record<string, string> = {
   ends_at: "Término",
   customer_name: "Cliente",
   customer_phone: "Teléfono",
+  phone: "Teléfono",
   notes: "Nota",
   name: "Nombre",
   price_clp: "Precio",
@@ -54,12 +56,14 @@ const FIELDS: Record<string, string> = {
   min_lead_min: "Anticipación mínima",
   max_days_ahead: "Días hacia adelante",
   max_active_per_phone: "Citas por teléfono",
+  max_active_per_client: "Citas por dispositivo",
+  max_bookings_per_client_hour: "Reservas por hora",
   cancel_min_lead_min: "Plazo para cancelar",
   slot_step_min: "Intervalo",
   cancelled_at: "Cancelada el",
 };
 
-const HIDDEN = new Set(["id", "created_at", "barber_id", "service_id", "cancel_token", "user_id"]);
+const HIDDEN = new Set(["id", "created_at", "barber_id", "service_id", "cancel_token", "user_id", "created_by"]);
 const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const STATUS: Record<string, string> = {
   pending: "pendiente", confirmed: "confirmada", cancelled: "cancelada", completed: "atendida", no_show: "no asistió",

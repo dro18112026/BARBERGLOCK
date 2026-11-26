@@ -52,6 +52,10 @@ export default async function ReglasPage() {
         help="Hasta cuántos días en el futuro se muestran horas." />
       <NumberField name="max_active_per_phone" label="Citas por teléfono" unit="citas" value={s.max_active_per_phone} min={1} max={20}
         help="Máximo de citas futuras que puede tener un mismo teléfono (evita que alguien llene la agenda)." />
+      <NumberField name="max_active_per_client" label="Citas por dispositivo" unit="citas" value={s.max_active_per_client} min={1} max={20}
+        help="Máximo de citas futuras reservadas desde una misma conexión a internet, aunque use teléfonos distintos." />
+      <NumberField name="max_bookings_per_client_hour" label="Reservas por hora" unit="reservas" value={s.max_bookings_per_client_hour} min={1} max={20}
+        help="Cuántas reservas se pueden hacer en una hora desde una misma conexión (cuentan también las que se cancelan)." />
       <NumberField name="cancel_min_lead_min" label="Plazo para cancelar" unit="minutos" value={s.cancel_min_lead_min} min={0} max={10080}
         help="Hasta cuánto antes el cliente puede cancelar desde su link. Después, tiene que llamar." />
       <NumberField name="slot_step_min" label="Intervalo de horas" unit="minutos" value={s.slot_step_min} min={5} max={240}

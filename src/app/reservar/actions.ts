@@ -5,14 +5,19 @@ import { redirect } from "next/navigation";
 import { isUuid } from "@/lib/booking/data";
 import { errorCode, errorMessage } from "@/lib/booking/errors";
 import { bestEffort, newBookingMessage, notifyStaff } from "@/lib/push";
-import { allowRequest } from "@/lib/rate-limit";
+import { allowRequest, clientKey } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type BookingState = { error: string | null; code: string | null };
 
 const field = (formData: FormData, name: string) => String(formData.get(name) ?? "").trim();
 
-/** Per-IP booking attempts. Generous for a family sharing Wi-Fi, tight for a bot. */
+/**
+ * Per-IP booking *attempts* (including failed ones, e.g. a mistyped phone).
+ * Successful bookings have their own, stricter per-connection limits in the
+ * database (Panel → Sistema → Reglas): max future appointments and max
+ * bookings per hour.
+ */
 const BOOKING_LIMITS = [
   { limit: 6, windowSeconds: 60 * 60 },
   { limit: 15, windowSeconds: 24 * 60 * 60 },
@@ -43,6 +48,7 @@ export async function bookAppointment(
     p_customer_name: field(formData, "name").slice(0, 200),
     p_customer_phone: field(formData, "phone").slice(0, 40),
     p_honeypot: field(formData, "website"),
+    p_client_key: (await clientKey()) ?? undefined,
   });
 
   if (error) {

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllServices, getAppointmentById } from "@/lib/admin/data";
 import { requireAdmin } from "@/lib/auth";
 import { isUuid } from "@/lib/booking/data";
 import { dayKey, formatTime } from "@/lib/datetime";
+import { BlockPhoneForm } from "../../bloqueos/block-phone-form";
 import { saveAppointment } from "../actions";
 import { AppointmentForm } from "../appointment-form";
 
@@ -18,6 +20,11 @@ export default async function EditAppointmentPage({ params }: PageProps<"/admin/
     getAllServices(supabase),
   ]);
   if (!appt) notFound();
+  const { data: blocked } = await supabase
+    .from("blocked_phones")
+    .select("phone")
+    .eq("phone", appt.customer_phone)
+    .maybeSingle();
 
   return (
     <>
@@ -37,6 +44,21 @@ export default async function EditAppointmentPage({ params }: PageProps<"/admin/
         }}
         submitLabel="Guardar cambios"
       />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-3xl tracking-wide">Bloquear este cliente</h2>
+        {blocked ? (
+          <p className="text-lg">
+            Este teléfono ya está bloqueado. Puedes desbloquearlo en{" "}
+            <Link href="/admin/bloqueos#telefonos" className="font-bold text-steel underline">
+              Bloqueos
+            </Link>
+            .
+          </p>
+        ) : (
+          <BlockPhoneForm phone={appt.customer_phone} />
+        )}
+      </section>
     </>
   );
 }

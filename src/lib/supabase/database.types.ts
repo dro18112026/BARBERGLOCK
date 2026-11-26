@@ -162,11 +162,60 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_phones: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      booking_clients: {
+        Row: {
+          appointment_id: string
+          client_key: string
+          created_at: string
+        }
+        Insert: {
+          appointment_id: string
+          client_key: string
+          created_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          client_key?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_clients_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_settings: {
         Row: {
           cancel_min_lead_min: number
           id: boolean
+          max_active_per_client: number
           max_active_per_phone: number
+          max_bookings_per_client_hour: number
           max_days_ahead: number
           min_lead_min: number
           slot_step_min: number
@@ -175,7 +224,9 @@ export type Database = {
         Insert: {
           cancel_min_lead_min?: number
           id?: boolean
+          max_active_per_client?: number
           max_active_per_phone?: number
+          max_bookings_per_client_hour?: number
           max_days_ahead?: number
           min_lead_min?: number
           slot_step_min?: number
@@ -184,7 +235,9 @@ export type Database = {
         Update: {
           cancel_min_lead_min?: number
           id?: boolean
+          max_active_per_client?: number
           max_active_per_phone?: number
+          max_bookings_per_client_hour?: number
           max_days_ahead?: number
           min_lead_min?: number
           slot_step_min?: number
@@ -386,8 +439,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      block_phone: {
+        Args: { p_cancel_future?: boolean; p_phone: string; p_reason?: string }
+        Returns: number
+      }
       book_appointment: {
         Args: {
+          p_client_key?: string
           p_customer_name: string
           p_customer_phone: string
           p_honeypot?: string
@@ -435,6 +493,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["staff_role"]
       }
+      normalize_cl_phone: { Args: { p_phone: string }; Returns: string }
       purge_personal_data: { Args: { p_months?: number }; Returns: Json }
       push_subscribe: {
         Args: {
@@ -464,6 +523,7 @@ export type Database = {
         }[]
       }
       staff_revoke: { Args: { p_user_id: string }; Returns: undefined }
+      unblock_phone: { Args: { p_phone: string }; Returns: undefined }
     }
     Enums: {
       appointment_status:

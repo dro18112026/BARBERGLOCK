@@ -9,6 +9,8 @@ const FIELDS = {
   min_lead_min: { min: 0, max: 7 * 24 * 60, label: "Anticipación mínima" },
   max_days_ahead: { min: 1, max: 365, label: "Días hacia adelante" },
   max_active_per_phone: { min: 1, max: 20, label: "Citas por teléfono" },
+  max_active_per_client: { min: 1, max: 20, label: "Citas por dispositivo" },
+  max_bookings_per_client_hour: { min: 1, max: 20, label: "Reservas por hora" },
   cancel_min_lead_min: { min: 0, max: 7 * 24 * 60, label: "Plazo para cancelar" },
   slot_step_min: { min: 5, max: 240, label: "Intervalo de horas" },
 } as const;

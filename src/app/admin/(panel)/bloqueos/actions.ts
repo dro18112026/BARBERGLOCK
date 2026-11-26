@@ -6,6 +6,7 @@ import { getDefaultBarberId } from "@/lib/admin/data";
 import { requireAdmin } from "@/lib/auth";
 import { isUuid } from "@/lib/booking/data";
 import { addDays, zonedToDate } from "@/lib/datetime";
+import { normalizeChileanPhone } from "@/lib/format";
 
 const fail = (error: string): ActionResult => ({ error, ok: false });
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,6 +62,47 @@ export async function deleteTimeOff(id: string): Promise<ActionResult> {
   if (error) {
     console.error("deleteTimeOff:", error);
     return fail("No se pudo borrar el bloqueo.");
+  }
+  refresh();
+  return { error: null, ok: true };
+}
+
+// --- Blocked phones -----------------------------------------------------------------
+
+/** Blocks a number from booking online; optionally cancels its future appointments. */
+export async function blockPhone(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const { supabase } = await requireAdmin();
+  const phone = normalizeChileanPhone(String(formData.get("phone") ?? ""));
+  const reason = String(formData.get("reason") ?? "").trim() || undefined;
+  const cancelFuture = formData.get("cancelFuture") === "on";
+  if (!phone) return fail("Revisa el teléfono. Debe tener 9 dígitos, por ejemplo 9 1234 5678.");
+  if (reason && reason.length > 200) return fail("El motivo es muy largo.");
+
+  const { data: cancelled, error } = await supabase.rpc("block_phone", {
+    p_phone: phone,
+    p_reason: reason,
+    p_cancel_future: cancelFuture,
+  });
+  if (error) {
+    console.error("block_phone:", error);
+    return fail("No se pudo bloquear el teléfono.");
+  }
+  refresh();
+  return {
+    error: null,
+    ok: true,
+    message: cancelled
+      ? `Teléfono bloqueado. Se ${cancelled === 1 ? "canceló 1 hora futura" : `cancelaron ${cancelled} horas futuras`}.`
+      : "Teléfono bloqueado.",
+  };
+}
+
+export async function unblockPhone(phone: string): Promise<ActionResult> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.rpc("unblock_phone", { p_phone: String(phone) });
+  if (error) {
+    console.error("unblock_phone:", error);
+    return fail("No se pudo desbloquear el teléfono.");
   }
   refresh();
   return { error: null, ok: true };

@@ -26,6 +26,16 @@ async function ipKey(scope: string): Promise<string> {
   return `${scope}:${digest}`;
 }
 
+/**
+ * Opaque id of the customer's connection for the per-connection booking
+ * limits stored with each appointment. Null when the IP is unknown, so a
+ * missing header never puts every customer under the same limit.
+ */
+export async function clientKey(): Promise<string | null> {
+  if ((await clientIp()) === "unknown") return null;
+  return ipKey("client");
+}
+
 type Limit = { limit: number; windowSeconds: number };
 
 /**

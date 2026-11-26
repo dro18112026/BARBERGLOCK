@@ -4,6 +4,13 @@ const MESSAGES: Record<string, string> = {
     "Esa hora ya no está disponible. Alguien la tomó hace un momento. Por favor elige otra.",
   PHONE_LIMIT:
     "Este teléfono ya tiene 2 horas reservadas. Si necesitas otra, llámanos.",
+  // Same text as the per-connection limits: no hint that the number is blocked.
+  PHONE_BLOCKED:
+    "No pudimos tomar tu reserva por internet. Llámanos y te buscamos una hora.",
+  CLIENT_LIMIT:
+    "Ya hay varias horas reservadas desde este dispositivo. Si necesitas otra, llámanos.",
+  CLIENT_HOURLY_LIMIT:
+    "Ya hiciste varias reservas en la última hora. Espera un rato o llámanos para reservar.",
   INVALID_PHONE: "Revisa tu teléfono. Debe tener 9 dígitos, por ejemplo 9 1234 5678.",
   INVALID_NAME: "Escribe tu nombre (al menos 2 letras).",
   SERVICE_NOT_FOUND: "Ese servicio ya no está disponible. Elige otro.",
