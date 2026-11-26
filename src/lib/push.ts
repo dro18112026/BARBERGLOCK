@@ -36,7 +36,10 @@ export function isPushConfigured(): boolean {
 
 /** Sends to the given devices; forgets the ones the push service says are gone. */
 async function sendTo(subs: Subscription[], payload: PushPayload, ttlSeconds: number) {
-  if (!subs.length) return { sent: 0, failed: 0 };
+  if (!subs.length) {
+    console.info(`push "${payload.title}": no devices`);
+    return { sent: 0, failed: 0 };
+  }
   const supabase = createAdminClient();
   const body = JSON.stringify(payload);
   let sent = 0;
@@ -70,14 +73,17 @@ async function sendTo(subs: Subscription[], payload: PushPayload, ttlSeconds: nu
 /** Devices of everyone who currently has panel access. */
 async function staffDevices(): Promise<Subscription[]> {
   const supabase = createAdminClient();
-  const [{ data: staff }, { data: subs, error }] = await Promise.all([
+  const [staffResult, subsResult] = await Promise.all([
     supabase.from("staff").select("user_id"),
     supabase.from("push_subscriptions").select("id, endpoint, p256dh, auth, user_id"),
   ]);
+  const error = staffResult.error ?? subsResult.error;
   if (error) {
-    console.error("push: could not read subscriptions:", error);
+    console.error("push: could not read staff devices:", error.message);
     return [];
   }
+  const staff = staffResult.data;
+  const subs = subsResult.data;
   const allowed = new Set((staff ?? []).map((s) => s.user_id));
   return (subs ?? []).filter((s) => allowed.has(s.user_id));
 }

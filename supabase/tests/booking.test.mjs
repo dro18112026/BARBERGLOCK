@@ -352,6 +352,7 @@ await db.exec("reset role");
   await db.query("update appointments set starts_at = starts_at + interval '5 minutes', ends_at = ends_at + interval '5 minutes' where id = $1", [soon]);
   await db.exec("set role service_role");
   ok((await val("select * from claim_push_reminders(30)")).length === 1, "rescheduled appointment gets a new reminder");
+  ok((await n("select count(*)::int as n from staff")) >= 1, "server (service_role) can read staff to pick push devices");
   await db.exec("reset role");
 }
 
