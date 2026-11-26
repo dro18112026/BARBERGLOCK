@@ -103,13 +103,19 @@ self.addEventListener("push", (event) => {
   }
   const title = data.title || "BARBERGLOCK";
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "",
-      tag: data.tag,
-      renotify: Boolean(data.tag),
-      icon: "/icons/icon-192.png",
-      data: { url: data.url || "/admin" },
-    }),
+    Promise.all([
+      // An open panel reloads its data (e.g. the agenda shows the cancellation).
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clients) => clients.forEach((c) => c.postMessage({ type: "refresh" }))),
+      self.registration.showNotification(title, {
+        body: data.body || "",
+        tag: data.tag,
+        renotify: Boolean(data.tag),
+        icon: "/icons/icon-192.png",
+        data: { url: data.url || "/admin" },
+      }),
+    ]),
   );
 });
 

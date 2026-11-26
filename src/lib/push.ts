@@ -63,6 +63,7 @@ async function sendTo(subs: Subscription[], payload: PushPayload, ttlSeconds: nu
       }
     }),
   );
+  console.info(`push "${payload.title}": ${sent} sent, ${failed} failed`);
   return { sent, failed };
 }
 
@@ -97,14 +98,28 @@ export async function notifyUser(userId: string, payload: PushPayload) {
 }
 
 /**
- * Runs a notification without letting it slow down or break the caller:
- * waits at most `ms`, swallows errors.
+ * Runs a notification without letting it break the caller: errors are
+ * swallowed, and it waits at most `ms`.
+ *
+ * The wait has to be generous: on a serverless host the function is frozen
+ * as soon as the response is sent, so a send still in flight is lost. A cold
+ * start (DB queries + TLS to Apple/Google) can take several seconds; 4 s was
+ * not enough in production.
  */
-export async function bestEffort(task: Promise<unknown>, ms = 4000): Promise<void> {
+export async function bestEffort(task: Promise<unknown>, ms = 10_000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await Promise.race([task, new Promise((resolve) => setTimeout(resolve, ms))]);
+    const timedOut = await Promise.race([
+      task.then(() => false),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(true), ms);
+      }),
+    ]);
+    if (timedOut) console.error(`push notification still pending after ${ms} ms`);
   } catch (error) {
     console.error("push notification failed:", error);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

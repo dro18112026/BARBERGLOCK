@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { signOut } from "../login/actions";
 import { AdminNav } from "./admin-nav";
+import { AutoRefresh } from "./auto-refresh";
 
 export const metadata: Metadata = {
   title: { default: "Panel", template: "%s · Panel" },
@@ -14,6 +15,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="flex flex-1 flex-col">
+      <AutoRefresh />
       <div className="border-b border-smoke/30 bg-paper">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-2">
           <AdminNav />
