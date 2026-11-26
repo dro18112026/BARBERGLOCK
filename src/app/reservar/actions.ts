@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUuid } from "@/lib/booking/data";
 import { errorCode, errorMessage } from "@/lib/booking/errors";
+import { bestEffort, newBookingMessage, notifyStaff } from "@/lib/push";
 import { allowRequest } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -52,6 +53,26 @@ export async function bookAppointment(
     return { error: errorMessage(code), code };
   }
 
-  const { cancel_token } = data as { cancel_token: string };
+  const booked = data as {
+    id: string;
+    cancel_token: string;
+    starts_at: string;
+    customer_name: string;
+    service_name: string;
+  };
+
+  // Tell the barber's phone (never blocks or breaks the booking).
+  await bestEffort(
+    notifyStaff(
+      newBookingMessage({
+        id: booked.id,
+        customerName: booked.customer_name,
+        serviceName: booked.service_name,
+        startsAt: booked.starts_at,
+      }),
+    ),
+  );
+
+  const { cancel_token } = booked;
   redirect(`/cita/${cancel_token}?nueva=1`);
 }

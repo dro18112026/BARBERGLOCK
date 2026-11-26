@@ -1,0 +1,153 @@
+import "server-only";
+import webpush from "web-push";
+import { addDays, dayKey, formatLongDay, formatTime } from "@/lib/datetime";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * Web Push to the panel (barber's phone). Subscriptions are created in
+ * Panel → Mi cuenta; this module sends to them with the VAPID keys from the
+ * environment. Every send is best-effort: a failure is logged and never
+ * breaks the customer's booking or cancellation.
+ */
+
+export type PushPayload = {
+  title: string;
+  body: string;
+  /** Page opened when the notification is tapped. */
+  url: string;
+  /** Same tag = replaces the previous notification instead of stacking. */
+  tag?: string;
+};
+
+type Subscription = { id: string; endpoint: string; p256dh: string; auth: string };
+
+let configured: boolean | null = null;
+
+export function isPushConfigured(): boolean {
+  if (configured !== null) return configured;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return (configured = false);
+  const subject =
+    process.env.VAPID_SUBJECT || process.env.NEXT_PUBLIC_SITE_URL || "https://localhost";
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  return (configured = true);
+}
+
+/** Sends to the given devices; forgets the ones the push service says are gone. */
+async function sendTo(subs: Subscription[], payload: PushPayload, ttlSeconds: number) {
+  if (!subs.length) return { sent: 0, failed: 0 };
+  const supabase = createAdminClient();
+  const body = JSON.stringify(payload);
+  let sent = 0;
+  let failed = 0;
+
+  await Promise.all(
+    subs.map(async (s) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          body,
+          { TTL: ttlSeconds, urgency: "high", timeout: 8000 },
+        );
+        sent++;
+      } catch (error) {
+        failed++;
+        const status = (error as { statusCode?: number }).statusCode;
+        if (status === 404 || status === 410) {
+          // Uninstalled app, revoked permission or expired subscription.
+          await supabase.from("push_subscriptions").delete().eq("id", s.id);
+        } else {
+          console.error("push send failed:", status, (error as Error).message);
+        }
+      }
+    }),
+  );
+  return { sent, failed };
+}
+
+/** Devices of everyone who currently has panel access. */
+async function staffDevices(): Promise<Subscription[]> {
+  const supabase = createAdminClient();
+  const [{ data: staff }, { data: subs, error }] = await Promise.all([
+    supabase.from("staff").select("user_id"),
+    supabase.from("push_subscriptions").select("id, endpoint, p256dh, auth, user_id"),
+  ]);
+  if (error) {
+    console.error("push: could not read subscriptions:", error);
+    return [];
+  }
+  const allowed = new Set((staff ?? []).map((s) => s.user_id));
+  return (subs ?? []).filter((s) => allowed.has(s.user_id));
+}
+
+export async function notifyStaff(payload: PushPayload, ttlSeconds = 24 * 60 * 60) {
+  if (!isPushConfigured()) return { sent: 0, failed: 0 };
+  return sendTo(await staffDevices(), payload, ttlSeconds);
+}
+
+export async function notifyUser(userId: string, payload: PushPayload) {
+  if (!isPushConfigured()) return { sent: 0, failed: 0 };
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("user_id", userId);
+  return sendTo(data ?? [], payload, 60 * 60);
+}
+
+/**
+ * Runs a notification without letting it slow down or break the caller:
+ * waits at most `ms`, swallows errors.
+ */
+export async function bestEffort(task: Promise<unknown>, ms = 4000): Promise<void> {
+  try {
+    await Promise.race([task, new Promise((resolve) => setTimeout(resolve, ms))]);
+  } catch (error) {
+    console.error("push notification failed:", error);
+  }
+}
+
+// --- Messages (Spanish, as the barber reads them) ---------------------------------
+
+/** "hoy 16:00", "mañana 16:00", "jueves 3 de diciembre, 16:00". */
+export function whenLabel(startsAt: string): string {
+  const day = dayKey(startsAt);
+  const today = dayKey(new Date());
+  const time = formatTime(startsAt);
+  if (day === today) return `hoy ${time}`;
+  if (day === addDays(today, 1)) return `mañana ${time}`;
+  return `${formatLongDay(startsAt)}, ${time}`;
+}
+
+const agendaUrl = (startsAt: string) => `/admin?fecha=${dayKey(startsAt)}&vista=dia`;
+
+type ApptInfo = { id?: string; customerName: string; serviceName: string; startsAt: string };
+
+export function newBookingMessage(a: ApptInfo): PushPayload {
+  return {
+    title: "Nueva reserva",
+    body: `${a.customerName} · ${a.serviceName}\n${whenLabel(a.startsAt)}`,
+    url: agendaUrl(a.startsAt),
+    tag: a.id ? `appt-${a.id}` : undefined,
+  };
+}
+
+export function cancelledMessage(a: ApptInfo): PushPayload {
+  return {
+    title: "Reserva cancelada",
+    body: `${a.customerName} canceló: ${a.serviceName}\n${whenLabel(a.startsAt)}`,
+    url: agendaUrl(a.startsAt),
+    tag: a.id ? `appt-${a.id}` : undefined,
+  };
+}
+
+export function reminderMessage(a: ApptInfo): PushPayload {
+  const minutes = Math.max(1, Math.round((Date.parse(a.startsAt) - Date.now()) / 60000));
+  return {
+    title: `En ${minutes} min: ${a.serviceName}`,
+    body: `${a.customerName} · ${formatTime(a.startsAt)}`,
+    url: agendaUrl(a.startsAt),
+    tag: a.id ? `reminder-${a.id}` : undefined,
+  };
+}

@@ -6,6 +6,7 @@
  * - Everything else (admin, appointment links, server actions, RSC requests):
  *   network only. Customer data is never stored in the cache.
  * - Offline navigation with nothing cached → /offline (shows the phone number).
+ * - Push notifications for the panel (bottom of the file).
  *
  * Bump VERSION to drop old caches after changing this file.
  */
@@ -89,4 +90,41 @@ self.addEventListener("fetch", (event) => {
         }),
     );
   }
+});
+
+// --- Push notifications (panel) ------------------------------------------------
+// Payload from src/lib/push.ts: { title, body, url, tag }.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "BARBERGLOCK";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      tag: data.tag,
+      renotify: Boolean(data.tag),
+      icon: "/icons/icon-192.png",
+      data: { url: data.url || "/admin" },
+    }),
+  );
+});
+
+// Tap → open (or focus) the panel on the right day.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/admin", self.location.origin);
+  if (target.origin !== self.location.origin) return;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const panel = clients.find((c) => new URL(c.url).pathname.startsWith("/admin"));
+      if (panel) {
+        return panel.focus().then((c) => (c || panel).navigate(target.href));
+      }
+      return self.clients.openWindow(target.href);
+    }),
+  );
 });

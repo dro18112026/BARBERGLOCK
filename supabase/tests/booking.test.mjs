@@ -292,5 +292,68 @@ await as(BARBER, "aal1");
 ok((await val("select is_admin() as a"))[0].a === true, "staff without 2FA unaffected");
 await db.exec("reset role");
 
+// --- Push notifications ----------------------------------------------------------
+{
+  const EP = "https://push.example.test/device-1";
+  const sub = (endpoint = EP) => `select push_subscribe('${endpoint}', 'key-p256dh', 'key-auth', 'Test UA')`;
+
+  await db.exec("select set_config('request.jwt.claims', '{}', false)");
+  await db.exec("set role anon");
+  await expectErr(sub(), [], "permission denied", "anon cannot register a push device");
+  await db.exec("reset role");
+
+  await as(NOBODY);
+  await expectErr(sub(), [], "FORBIDDEN", "non-staff cannot register a push device");
+  await as(BARBER);
+  await expectErr(sub("http://insecure.test/x"), [], "INVALID_SUBSCRIPTION", "push endpoint must be https");
+  await db.exec(sub());
+  await db.exec(sub()); // same device again: no duplicate
+  ok((await n("select count(*)::int as n from push_subscriptions")) === 1, "barber registers a device (idempotent)");
+  await expectErr("insert into push_subscriptions (user_id, endpoint, p256dh, auth) values (auth.uid(), 'https://x.test', 'a', 'b')",
+    [], "permission denied", "push devices are written only via push_subscribe");
+
+  await as(SUPER, "aal2");
+  ok((await n("select count(*)::int as n from push_subscriptions")) === 0, "staff only see their own devices");
+  await db.exec(sub());
+  await db.exec("reset role");
+  ok((await val(`select user_id from push_subscriptions where endpoint = '${EP}'`))[0].user_id === SUPER,
+    "same device used with another account moves to that account");
+  await as(BARBER);
+  await db.exec(`select push_unsubscribe('${EP}')`);
+  await db.exec("reset role");
+  ok((await n("select count(*)::int as n from push_subscriptions")) === 1, "cannot unsubscribe someone else's device");
+  await as(SUPER, "aal2");
+  await db.exec(`select push_unsubscribe('${EP}')`);
+  await db.exec("reset role");
+  ok((await n("select count(*)::int as n from push_subscriptions")) === 0, "owner unsubscribes the device");
+
+  // Reminders
+  const appt = async (name, startsIn, status = "confirmed") =>
+    (await val(
+      `insert into appointments (barber_id, service_id, customer_name, customer_phone, starts_at, ends_at, status)
+       values ('00000000-0000-4000-8000-000000000001', $1, $2, '+56966666666',
+               now() + $3::interval, now() + $3::interval + interval '40 minutes', $4)
+       returning id`,
+      [CORTE, name, startsIn, status],
+    ))[0].id;
+  const soon = await appt("Pronto", "20 minutes");
+  await appt("Cancelado Pronto", "25 minutes", "cancelled");
+  await appt("Más Tarde", "3 hours");
+
+  await as(BARBER);
+  await expectErr("select * from claim_push_reminders(30)", [], "permission denied", "staff cannot claim reminders (server only)");
+  await db.exec("reset role");
+  await db.exec("set role service_role");
+  const first = await val("select customer_name, service_name from claim_push_reminders(30)");
+  ok(first.length === 1 && first[0].customer_name === "Pronto" && first[0].service_name === "Corte",
+    `reminder due only for the live appointment within 30 min: ${JSON.stringify(first)}`);
+  ok((await val("select * from claim_push_reminders(30)")).length === 0, "a reminder is sent only once");
+  await db.exec("reset role");
+  await db.query("update appointments set starts_at = starts_at + interval '5 minutes', ends_at = ends_at + interval '5 minutes' where id = $1", [soon]);
+  await db.exec("set role service_role");
+  ok((await val("select * from claim_push_reminders(30)")).length === 1, "rescheduled appointment gets a new reminder");
+  await db.exec("reset role");
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
 process.exit(failures ? 1 : 0);

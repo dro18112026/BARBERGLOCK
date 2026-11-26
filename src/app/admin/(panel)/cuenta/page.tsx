@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { PushNotifications } from "./push-notifications";
 import { TwoFactor } from "./two-factor";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -26,6 +27,11 @@ export default async function CuentaPage() {
         >
           Cambiar contraseña
         </Link>
+      </section>
+
+      <section className={`${card} flex flex-col gap-3`}>
+        <h2 className="font-display text-3xl tracking-wide">Avisos en el celular</h2>
+        <PushNotifications />
       </section>
 
       <section className={`${card} flex flex-col gap-3`}>

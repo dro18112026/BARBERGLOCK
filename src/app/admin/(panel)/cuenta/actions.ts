@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { isPushConfigured, notifyUser } from "@/lib/push";
 
 export type EnrollStart =
   | { ok: true; factorId: string; qr: string; secret: string }
@@ -54,5 +55,52 @@ export async function disableTotp(factorId: string): Promise<{ ok: boolean; erro
     return { ok: false, error: "No se pudo desactivar. Cierra sesión, vuelve a entrar con el código e inténtalo otra vez." };
   }
   refresh();
+  return { ok: true };
+}
+
+// --- Push notifications on this device -------------------------------------------
+
+export type PushResult = { ok: boolean; error?: string };
+
+/** Saves this device's push subscription (called right after the browser grants it). */
+export async function savePushSubscription(sub: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent?: string;
+}): Promise<PushResult> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.rpc("push_subscribe", {
+    p_endpoint: String(sub.endpoint ?? ""),
+    p_p256dh: String(sub.keys?.p256dh ?? ""),
+    p_auth: String(sub.keys?.auth ?? ""),
+    p_user_agent: sub.userAgent ? String(sub.userAgent) : undefined,
+  });
+  if (error) {
+    console.error("push_subscribe:", error);
+    return { ok: false, error: "No se pudo guardar este dispositivo. Inténtalo de nuevo." };
+  }
+  return { ok: true };
+}
+
+export async function removePushSubscription(endpoint: string): Promise<PushResult> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.rpc("push_unsubscribe", { p_endpoint: String(endpoint) });
+  if (error) console.error("push_unsubscribe:", error);
+  return { ok: !error };
+}
+
+/** "Enviar prueba": a notification to every device of the signed-in user. */
+export async function sendTestPush(): Promise<PushResult> {
+  const { userId } = await requireAdmin();
+  if (!isPushConfigured()) {
+    return { ok: false, error: "Las notificaciones no están configuradas en el servidor (faltan las llaves VAPID)." };
+  }
+  const { sent } = await notifyUser(userId, {
+    title: "Prueba de aviso",
+    body: "Las notificaciones de BARBERGLOCK funcionan en este dispositivo.",
+    url: "/admin/cuenta",
+    tag: "test",
+  });
+  if (!sent) return { ok: false, error: "No se pudo enviar. Desactiva y vuelve a activar los avisos." };
   return { ok: true };
 }

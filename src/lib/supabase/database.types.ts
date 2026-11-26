@@ -192,6 +192,62 @@ export type Database = {
         }
         Relationships: []
       }
+      push_reminders: {
+        Row: {
+          appointment_id: string
+          sent_at: string
+          starts_at: string
+        }
+        Insert: {
+          appointment_id: string
+          sent_at?: string
+          starts_at: string
+        }
+        Update: {
+          appointment_id?: string
+          sent_at?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_reminders_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           hit_at: string
@@ -341,6 +397,15 @@ export type Database = {
         Returns: Json
       }
       cancel_appointment: { Args: { p_token: string }; Returns: Json }
+      claim_push_reminders: {
+        Args: { p_minutes?: number }
+        Returns: {
+          appointment_id: string
+          customer_name: string
+          service_name: string
+          starts_at: string
+        }[]
+      }
       current_actor_role: { Args: never; Returns: string }
       default_barber_id: { Args: never; Returns: string }
       get_appointment: { Args: { p_token: string }; Returns: Json }
@@ -371,6 +436,16 @@ export type Database = {
         Returns: Database["public"]["Enums"]["staff_role"]
       }
       purge_personal_data: { Args: { p_months?: number }; Returns: Json }
+      push_subscribe: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
+      push_unsubscribe: { Args: { p_endpoint: string }; Returns: undefined }
       staff_grant: {
         Args: {
           p_email: string

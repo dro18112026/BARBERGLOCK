@@ -66,6 +66,24 @@ Turn off public sign-ups (Authentication → Sign In / Providers → "Allow new 
 
 Supabase's built-in email sender only allows a few emails per hour; set up custom SMTP (Authentication → Emails → SMTP) if that's not enough.
 
+## Push notifications (panel)
+
+The barber gets a notification on their phone when a customer books or cancels on the website, and 30 minutes before every appointment. Each device turns them on in **Panel → Mi cuenta → Avisos en el celular** (iPhone: only from the Panel app installed on the home screen, iOS 16.4+).
+
+Setup, once per barbershop:
+
+1. Generate keys: `npx web-push generate-vapid-keys`, plus a long random string for `PUSH_CRON_SECRET`.
+2. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (site URL) and `PUSH_CRON_SECRET` on the host and redeploy.
+3. Apply the migrations (`npm run db:push`). It enables `pg_net` and schedules `push-reminders` (every 5 min) with `pg_cron`.
+4. In the Supabase SQL editor, store the site URL and the same secret in Vault:
+
+   ```sql
+   select vault.create_secret('https://<your-site>', 'push_site_url');
+   select vault.create_secret('<PUSH_CRON_SECRET>', 'push_cron_secret');
+   ```
+
+Changing the VAPID keys invalidates every device: each one has to turn notifications on again. Check the cron runs with `select * from cron.job_run_details order by start_time desc limit 5;` and the HTTP replies with `select status_code, content from net._http_response order by created desc limit 5;`.
+
 ## Design tokens
 
 Tailwind theme in `src/app/globals.css`:
