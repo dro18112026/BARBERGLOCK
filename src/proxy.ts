@@ -16,9 +16,21 @@ export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = contentSecurityPolicy(nonce, request.nextUrl.protocol === "https:");
 
+  // The customer's IP as the proxy sees it, for the per-connection booking
+  // limits. Set here (overwriting anything the client sent) because the page
+  // handler behind the proxy may not see the original headers.
+  const clientIp = firstIp(
+    request.headers.get("x-nf-client-connection-ip") ??
+      request.headers.get("cf-connecting-ip") ??
+      request.headers.get("x-real-ip") ??
+      request.headers.get("x-forwarded-for"),
+  );
+
   // Forward the nonce to rendering via request headers (rebuilt after cookie refreshes).
   const next = () => {
     const requestHeaders = new Headers(request.headers);
+    requestHeaders.delete("x-bg-client-ip");
+    if (clientIp) requestHeaders.set("x-bg-client-ip", clientIp);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -67,6 +79,11 @@ export async function proxy(request: NextRequest) {
 
   response.headers.set("Content-Security-Policy", csp);
   return response;
+}
+
+function firstIp(value: string | null): string | null {
+  const ip = value?.split(",")[0]?.trim();
+  return ip || null;
 }
 
 function contentSecurityPolicy(nonce: string, https: boolean): string {

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { isUuid } from "@/lib/booking/data";
 import { errorCode, errorMessage } from "@/lib/booking/errors";
 import { bestEffort, newBookingMessage, notifyStaff } from "@/lib/push";
-import { allowRequest, clientKey } from "@/lib/rate-limit";
+import { allowRequest, clientKey, ipHeaderDiagnostics } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type BookingState = { error: string | null; code: string | null };
@@ -34,6 +34,8 @@ export async function bookAppointment(
   if (!isUuid(serviceId) || Number.isNaN(Date.parse(startsAt))) {
     return { error: errorMessage("INVALID_REQUEST"), code: "INVALID_REQUEST" };
   }
+
+  console.info("booking ip headers:", JSON.stringify(await ipHeaderDiagnostics()));
 
   if (!(await allowRequest("book", BOOKING_LIMITS))) {
     return { error: errorMessage("RATE_LIMITED"), code: "RATE_LIMITED" };
