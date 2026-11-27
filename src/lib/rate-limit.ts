@@ -39,22 +39,6 @@ export async function clientKey(): Promise<string | null> {
   return ipKey("client");
 }
 
-/**
- * TEMPORARY diagnostic (remove once the per-connection limit is confirmed in
- * production): which IP headers this request has, as short hashes, so logs can
- * show whether different customers get different values without storing IPs.
- */
-export async function ipHeaderDiagnostics(): Promise<Record<string, string>> {
-  const h = await headers();
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  const out: Record<string, string> = {};
-  for (const name of ["x-bg-client-ip", "x-nf-client-connection-ip", "cf-connecting-ip", "x-real-ip", "x-forwarded-for"]) {
-    const v = h.get(name);
-    out[name] = v ? createHmac("sha256", secret).update(v).digest("hex").slice(0, 6) : "-";
-  }
-  return out;
-}
-
 type Limit = { limit: number; windowSeconds: number };
 
 /**
